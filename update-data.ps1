@@ -1,4 +1,4 @@
-﻿# update-data.ps1
+# update-data.ps1
 # Uruchom ten skrypt aby zaktualizowac data.js z aktualnego metki.xls
 # Potem: git add data.js && git commit -m "update metki data" && git push
 
@@ -33,7 +33,9 @@ $excel.Quit()
 [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
 
 $json = $all | ConvertTo-Json -Compress
-"const METKI_DATA = $json;" | Out-File $outPath -Encoding UTF8
+$dateStr = Get-Date -Format "dd.MM.yyyy"
+$content = "const METKI_DATA_DATE = `"$dateStr`";`nconst METKI_DATA = $json;"
+$content | Out-File $outPath -Encoding UTF8
 
 Write-Host "Zapisano $($all.Count) wierszy do $outPath"
 Write-Host ""
