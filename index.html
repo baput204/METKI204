@@ -425,8 +425,8 @@
       <option value="hfb-desc">HFB ↓</option>
       <option value="art-asc">Nr art ↑</option>
       <option value="art-desc">Nr art ↓</option>
-      <option value="price-asc">Cena ↑</option>
-      <option value="price-desc">Cena ↓</option>
+      <option value="price-asc">PA ↑</option>
+      <option value="price-desc">PA ↓</option>
       <option value="boh-desc">BoH ↓</option>
       <option value="boh-asc">BoH ↑</option>
       <option value="name-asc">Nazwa A–Z</option>
@@ -534,31 +534,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ─── LOAD DATA ────────────────────────────────────────
+function pad(val, len) {
+  const s = String(val || '').trim().replace(/^0+/, '') || '0';
+  return s.padStart(len, '0');
+}
+
 function loadData(rows, sourceLabel) {
   allData = rows.map(r => ({
-    hfb:        String(r['HFB'] || '').trim(),
-    pa:         r['Product Area'] || '',
-    artNo:      String(r['NR ART.'] || r['Article Number'] || '').trim(),
-    name:       r['NAZWA ART.'] || r['Article Name'] || '',
-    sm:         r['SM'] || '',
-    srp:        r['SRP'] || '',
-    boh:        r['BoH'] !== undefined ? r['BoH'] : (r['Base Onhand'] || ''),
-    bohLd:      r['BoH LD'] !== undefined ? r['BoH LD'] : '',
-    status:     r['Status'] || '',
-    zmianaC:    r['Zmiana ceny'] === true || r['Zmiana ceny'] === 'True' || r['Zmiana ceny'] === 'TRUE',
-    price1:     parseFloat(r['Price1']) || 0,
-    price1ld:   parseFloat(r['Price1 LD']) || 0,
-    locPrice:   parseFloat(r['Loc Price']) || 0,
-    locPriceLd: parseFloat(r['LocPrice LD']) || 0,
-    zmianaL:    r['Zmiana lokalizacji'] === true || r['Zmiana lokalizacji'] === 'True' || r['Zmiana lokalizacji'] === 'TRUE',
-    lok:        r['Lokalizacja'] || '',
-    lokLd:      r['LOK LD'] || '',
-    fprice:     parseFloat(r['FPRICE1']) || 0,
-    fpriceld:   parseFloat(r['FPRICE LD']) || 0,
-    notatki:    r['Notatki'] || '',
-    eds:        r['EDS'] || '',
-    fireclass:  r['Fireclass'] || '',
-    smdq:       r['SMDQ'] || '',
+    hfb:     String(r['HFB'] || '').trim().padStart(2, '0'),
+    pa:      pad(r['Product Area'] || '', 4),
+    artNo:   pad(r['NR ART.'] || r['Article Number'] || '', 8),
+    name:    r['NAZWA ART.'] || r['Article Name'] || '',
+    sm:      r['SM'] !== undefined ? String(r['SM']) : '',
+    srp:     r['SRP'] !== undefined ? String(r['SRP']) : '',
+    boh:     r['BoH'] !== undefined ? r['BoH'] : (r['Base Onhand'] !== undefined ? r['Base Onhand'] : ''),
+    status:  r['Status'] || '',
+    zmianaC: r['Zmiana ceny'] === true || r['Zmiana ceny'] === 'True' || r['Zmiana ceny'] === 'TRUE',
+    zmianaL: r['Zmiana lokalizacji'] === true || r['Zmiana lokalizacji'] === 'True' || r['Zmiana lokalizacji'] === 'TRUE',
+    lok:     r['Lokalizacja'] || '',
+    notatki: r['Notatki'] || '',
   }));
 
   document.getElementById('data-date-label').textContent = sourceLabel;
@@ -597,7 +591,7 @@ function applyFilters() {
     if (activeStatus === 'CHANGE' && !r.zmianaC && !r.zmianaL) return false;
 
     if (searchQuery) {
-      const haystack = [r.artNo, r.name, r.lok, r.hfb, r.pa, r.notatki].join(' ').toLowerCase();
+      const haystack = [r.artNo, r.name, r.lok, r.hfb, r.pa, r.notatki, r.status].join(' ').toLowerCase();
       if (!haystack.includes(searchQuery)) return false;
     }
     return true;
@@ -608,11 +602,11 @@ function applyFilters() {
   const asc = dir === 'asc' ? 1 : -1;
   filteredData.sort((a, b) => {
     let va, vb;
-    if (key === 'hfb')   { va = a.hfb;    vb = b.hfb; }
-    if (key === 'art')   { va = a.artNo;  vb = b.artNo; }
-    if (key === 'price') { va = a.price1; vb = b.price1; }
+    if (key === 'hfb')   { va = a.hfb;              vb = b.hfb; }
+    if (key === 'art')   { va = a.artNo;             vb = b.artNo; }
+    if (key === 'price') { va = a.pa;                vb = b.pa; }
     if (key === 'boh')   { va = Number(a.boh) || 0; vb = Number(b.boh) || 0; }
-    if (key === 'name')  { va = a.name;   vb = b.name; }
+    if (key === 'name')  { va = a.name;              vb = b.name; }
     if (va < vb) return -1 * asc;
     if (va > vb) return  1 * asc;
     return 0;
@@ -643,27 +637,13 @@ function render() {
   empty.style.display = 'none';
 
   container.innerHTML = filteredData.map(r => buildCard(r)).join('');
-
-  // Details toggles
-  container.querySelectorAll('.card-details-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const details = btn.nextElementSibling;
-      const open = details.classList.toggle('open');
-      btn.textContent = open ? '▲ Mniej' : '▼ Szczegóły';
-    });
-  });
 }
 
-function fmt(val, decimals = 2) {
-  if (val === null || val === undefined || val === '' || val === 0) return '—';
-  const n = parseFloat(val);
-  if (isNaN(n)) return val;
-  return n.toFixed(decimals).replace('.', ',') + ' zł';
-}
-
-function fmtNum(val) {
+function fmtBoh(val) {
   if (val === null || val === undefined || val === '') return '—';
-  return val;
+  const n = Number(val);
+  if (isNaN(n)) return String(val);
+  return n < 0 ? `<span style="color:var(--warn-red);font-weight:700">${n}</span>` : String(n);
 }
 
 function buildCard(r) {
@@ -671,69 +651,48 @@ function buildCard(r) {
   const statusClass = isOk ? 'status-ok' : 'status-warn';
   const statusLabel = isOk ? '✓ Dostępny' : '✗ Niedostępny';
   const hasChange = r.zmianaC || r.zmianaL;
+  const lokClass = r.zmianaL ? 'loc-changed' : '';
 
-  const priceChanged = r.zmianaC;
-  const lokChanged = r.zmianaL;
-
-  const priceDisplay = r.locPrice > 0 ? r.locPrice : r.price1;
-  const priceClass = priceChanged ? 'price changed' : 'price';
-
-  const lokDisplay = r.lok || '—';
-  const lokClass = lokChanged ? 'loc-changed' : '';
-
-  const changeBadges =
-    (priceChanged ? '<span class="change-badge badge-price">Zmiana ceny</span>' : '') +
-    (lokChanged   ? '<span class="change-badge badge-lok">Zmiana lok.</span>' : '');
-
-  const noteHtml = r.notatki && r.notatki !== 'OK.' && r.notatki !== 'OK'
+  const noteHtml = r.notatki && r.notatki.trim() && r.notatki.trim() !== 'OK.' && r.notatki.trim() !== 'OK'
     ? `<div class="card-note">📋 ${esc(r.notatki)}</div>`
     : '';
+
+  const zmCenaIcon  = r.zmianaC ? '<span style="color:var(--change-orange);font-size:15px" title="Zmiana ceny">💲</span>' : '<span style="color:#ccc;font-size:15px">✕</span>';
+  const zmLokIcon   = r.zmianaL ? '<span style="color:var(--ok-green);font-size:15px" title="Zmiana lokalizacji">📍</span>' : '<span style="color:#ccc;font-size:15px">✕</span>';
 
   return `
   <div class="article-card${hasChange ? ' has-change' : ''}">
     <div class="card-top">
       <span class="card-hfb">HFB ${esc(r.hfb)}</span>
+      <span class="card-art-no" style="font-size:11px;color:#777">${esc(r.pa)}</span>
       <span class="card-art-no">${esc(r.artNo)}</span>
-      ${changeBadges}
       <span class="card-status ${statusClass}">${statusLabel}</span>
     </div>
     <div class="card-body">
       <div class="card-name">${esc(r.name)}</div>
       <div class="card-grid">
         <div class="card-field">
-          <span class="card-field-label">Cena</span>
-          <span class="card-field-value ${priceClass}">${fmt(priceDisplay)}</span>
+          <span class="card-field-label">SM</span>
+          <span class="card-field-value">${esc(r.sm) || '—'}</span>
         </div>
         <div class="card-field">
-          <span class="card-field-label">Lokalizacja</span>
-          <span class="card-field-value ${lokClass}">${esc(lokDisplay)}</span>
+          <span class="card-field-label">SRP</span>
+          <span class="card-field-value">${esc(r.srp) || '—'}</span>
         </div>
         <div class="card-field">
           <span class="card-field-label">BoH</span>
-          <span class="card-field-value">${fmtNum(r.boh)}</span>
+          <span class="card-field-value">${fmtBoh(r.boh)}</span>
         </div>
         <div class="card-field">
-          <span class="card-field-label">Product Area</span>
-          <span class="card-field-value">${esc(String(r.pa))}</span>
+          <span class="card-field-label">Lokalizacja</span>
+          <span class="card-field-value ${lokClass}">${esc(r.lok) || '—'}</span>
         </div>
       </div>
-      ${noteHtml}
-    </div>
-    <button class="card-details-toggle">▼ Szczegóły</button>
-    <div class="card-details">
-      <div class="card-details-grid">
-        <div class="detail-row"><span class="detail-label">SM</span><span class="detail-value">${fmtNum(r.sm)}</span></div>
-        <div class="detail-row"><span class="detail-label">SRP</span><span class="detail-value">${fmtNum(r.srp)}</span></div>
-        <div class="detail-row"><span class="detail-label">BoH LD</span><span class="detail-value">${fmtNum(r.bohLd)}</span></div>
-        <div class="detail-row"><span class="detail-label">Price1 LD</span><span class="detail-value">${fmt(r.price1ld)}</span></div>
-        <div class="detail-row"><span class="detail-label">Loc Price LD</span><span class="detail-value">${fmt(r.locPriceLd)}</span></div>
-        <div class="detail-row"><span class="detail-label">LOK LD</span><span class="detail-value">${esc(String(r.lokLd || '—'))}</span></div>
-        <div class="detail-row"><span class="detail-label">Family Price</span><span class="detail-value">${fmt(r.fprice)}</span></div>
-        <div class="detail-row"><span class="detail-label">Family Price LD</span><span class="detail-value">${fmt(r.fpriceld)}</span></div>
-        <div class="detail-row"><span class="detail-label">EDS</span><span class="detail-value">${fmtNum(r.eds) || '—'}</span></div>
-        <div class="detail-row"><span class="detail-label">Fireclass</span><span class="detail-value">${esc(String(r.fireclass || '—'))}</span></div>
-        <div class="detail-row"><span class="detail-label">SMDQ</span><span class="detail-value">${esc(String(r.smdq || '—'))}</span></div>
+      <div style="display:flex;gap:12px;margin-top:7px;align-items:center;font-size:12px;">
+        <span>${zmCenaIcon} Zmiana ceny</span>
+        <span>${zmLokIcon} Zmiana lok.</span>
       </div>
+      ${noteHtml}
     </div>
   </div>`;
 }
