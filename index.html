@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Metki – STO 204</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="data.js"></script>
+  <style>
+    :root {
+      --ikea-blue: #0058A3;
+      --ikea-blue-dark: #003F82;
+      --ikea-yellow: #FFDA1A;
+      --ok-green: #2E7D32;
+      --ok-green-bg: #E8F5E9;
+      --warn-red: #C62828;
+      --warn-red-bg: #FFEBEE;
+      --change-orange: #E65100;
+      --change-orange-bg: #FFF3E0;
+      --neutral-bg: #F5F5F5;
+      --card-border: #E0E0E0;
+      --text-primary: #111;
+      --text-secondary: #555;
+      --header-h: 110px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans', 'Segoe UI', Arial, sans-serif;
+      background: var(--neutral-bg);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER ── */
+    #app-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--ikea-blue);
+      color: #fff;
+      padding: 10px 12px 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+    #app-header h1 {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #app-header h1 .badge {
+      background: var(--ikea-yellow);
+      color: #111;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
+
+    #data-source-line {
+      font-size: 11px;
+      opacity: 0.8;
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #upload-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.5);
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #upload-btn:active { background: rgba(255,255,255,0.35); }
+    #file-input { display: none; }
+
+    /* ── FILTERS ── */
+    #filters-bar {
+      position: sticky;
+      top: 62px;
+      z-index: 99;
+      background: #fff;
+      border-bottom: 1px solid var(--card-border);
+      padding: 8px 10px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #search-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    #search-input {
+      flex: 1;
+      font-size: 14px;
+      padding: 7px 10px;
+      border: 1.5px solid #ccc;
+      border-radius: 20px;
+      outline: none;
+      background: #fafafa;
+    }
+    #search-input:focus { border-color: var(--ikea-blue); background: #fff; }
+
+    #sort-select {
+      font-size: 12px;
+      padding: 6px 8px;
+      border: 1.5px solid #ccc;
+      border-radius: 16px;
+      background: #fafafa;
+      outline: none;
+      max-width: 120px;
+    }
+
+    #hfb-row {
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    #hfb-row::-webkit-scrollbar { display: none; }
+
+    .hfb-chip {
+      flex-shrink: 0;
+      padding: 4px 11px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1.5px solid #ddd;
+      background: #fff;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+    .hfb-chip.active {
+      background: var(--ikea-blue);
+      color: #fff;
+      border-color: var(--ikea-blue);
+    }
+
+    #status-row {
+      display: flex;
+      gap: 5px;
+    }
+
+    .status-chip {
+      flex-shrink: 0;
+      padding: 4px 12px;
+      border-radius: 14px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1.5px solid #ddd;
+      background: #fff;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .status-chip.active-ok    { background: var(--ok-green);   color: #fff; border-color: var(--ok-green); }
+    .status-chip.active-warn  { background: var(--warn-red);   color: #fff; border-color: var(--warn-red); }
+    .status-chip.active-all   { background: var(--ikea-blue);  color: #fff; border-color: var(--ikea-blue); }
+    .status-chip.active-zmiana{ background: var(--change-orange); color: #fff; border-color: var(--change-orange); }
+
+    /* ── SUMMARY BAR ── */
+    #summary-bar {
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: var(--neutral-bg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #summary-bar span { font-weight: 700; color: var(--ikea-blue); }
+
+    /* ── CARDS ── */
+    #cards-container {
+      padding: 6px 8px 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .article-card {
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .article-card.has-change { border-left: 4px solid var(--change-orange); }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      padding: 9px 10px 6px;
+      gap: 8px;
+    }
+
+    .card-hfb {
+      background: var(--ikea-blue);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 9px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .card-art-no {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .card-status {
+      margin-left: auto;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 9px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .status-ok   { background: var(--ok-green-bg);  color: var(--ok-green); }
+    .status-warn { background: var(--warn-red-bg);  color: var(--warn-red); }
+
+    .card-body {
+      padding: 0 10px 8px;
+    }
+
+    .card-name {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+      margin-bottom: 6px;
+      color: var(--text-primary);
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 8px;
+    }
+
+    .card-field {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-field-label {
+      font-size: 10px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .card-field-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .card-field-value.price { color: var(--ikea-blue); }
+    .card-field-value.changed { color: var(--change-orange); }
+    .card-field-value.loc-changed { color: var(--change-orange); }
+
+    .card-note {
+      margin-top: 7px;
+      font-size: 12px;
+      padding: 5px 8px;
+      background: #FFF9C4;
+      border-left: 3px solid #F9A825;
+      border-radius: 0 5px 5px 0;
+      color: #5D4037;
+      line-height: 1.35;
+    }
+    .card-note:empty { display: none; }
+
+    /* Change badges */
+    .change-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 7px;
+      margin-left: 4px;
+    }
+    .badge-price { background: #FFECB3; color: #E65100; }
+    .badge-lok   { background: #E8F5E9; color: #2E7D32; }
+
+    /* ── DETAILS TOGGLE ── */
+    .card-details-toggle {
+      width: 100%;
+      background: var(--neutral-bg);
+      border: none;
+      border-top: 1px solid #eee;
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 5px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .card-details-toggle:active { background: #ebebeb; }
+
+    .card-details {
+      display: none;
+      padding: 8px 10px;
+      border-top: 1px solid #f0f0f0;
+      background: #fafafa;
+    }
+    .card-details.open { display: block; }
+
+    .card-details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px 10px;
+    }
+
+    .detail-row {
+      display: flex;
+      flex-direction: column;
+    }
+    .detail-label { font-size: 10px; color: var(--text-secondary); }
+    .detail-value { font-size: 12px; font-weight: 600; }
+
+    /* ── EMPTY STATE ── */
+    #empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+      display: none;
+    }
+    #empty-state .emoji { font-size: 40px; margin-bottom: 10px; }
+
+    /* ── DRAG OVERLAY ── */
+    #drag-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 88, 163, 0.88);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      text-align: center;
+      gap: 12px;
+      flex-direction: column;
+    }
+    #drag-overlay.active { display: flex; }
+    #drag-overlay .drag-icon { font-size: 48px; }
+
+    /* ── SORT INDICATOR ── */
+    .sort-asc::after  { content: ' ▲'; font-size: 9px; }
+    .sort-desc::after { content: ' ▼'; font-size: 9px; }
+
+    /* ── SCROLL TO TOP ── */
+    #scroll-top {
+      position: fixed;
+      bottom: 20px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--ikea-blue);
+      color: #fff;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+    #scroll-top.visible { display: flex; }
+  </style>
+</head>
+<body>
+
+<!-- Drag & drop overlay -->
+<div id="drag-overlay">
+  <div class="drag-icon">📂</div>
+  <div>Upuść plik metki.xls<br>aby załadować nowe dane</div>
+</div>
+
+<!-- Header -->
+<header id="app-header">
+  <h1>
+    🏷️ Metki
+    <span class="badge" id="count-badge">0</span>
+  </h1>
+  <div id="data-source-line">
+    <span id="data-date-label">Dane wbudowane</span>
+    <button id="upload-btn" onclick="document.getElementById('file-input').click()">📂 Wczytaj .xls</button>
+    <input type="file" id="file-input" accept=".xls,.xlsx" />
+  </div>
+</header>
+
+<!-- Filters -->
+<div id="filters-bar">
+  <div id="search-row">
+    <input type="search" id="search-input" placeholder="🔍  Szukaj artykułu, lokalizacji…" autocomplete="off" />
+    <select id="sort-select" aria-label="Sortuj według">
+      <option value="hfb-asc">HFB ↑</option>
+      <option value="hfb-desc">HFB ↓</option>
+      <option value="art-asc">Nr art ↑</option>
+      <option value="art-desc">Nr art ↓</option>
+      <option value="price-asc">Cena ↑</option>
+      <option value="price-desc">Cena ↓</option>
+      <option value="boh-desc">BoH ↓</option>
+      <option value="boh-asc">BoH ↑</option>
+      <option value="name-asc">Nazwa A–Z</option>
+      <option value="name-desc">Nazwa Z–A</option>
+    </select>
+  </div>
+
+  <div id="hfb-row">
+    <div class="hfb-chip active" data-hfb="ALL">Wszystkie</div>
+  </div>
+
+  <div id="status-row">
+    <div class="status-chip active-all" data-status="ALL">Wszystkie</div>
+    <div class="status-chip" data-status="OK">✅ Dostępny</div>
+    <div class="status-chip" data-status="WARN">❌ Niedostępny</div>
+    <div class="status-chip" data-status="CHANGE">🔄 Zmiana</div>
+  </div>
+</div>
+
+<!-- Summary -->
+<div id="summary-bar">
+  <div>Wyniki: <span id="result-count">0</span></div>
+  <div id="change-summary"></div>
+</div>
+
+<!-- Cards -->
+<div id="cards-container"></div>
+<div id="empty-state">
+  <div class="emoji">🔍</div>
+  <div>Brak wyników dla wybranych filtrów</div>
+</div>
+
+<!-- Scroll to top -->
+<button id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+// ─── STATE ───────────────────────────────────────────
+let allData = [];
+let filteredData = [];
+let activeHfb = 'ALL';
+let activeStatus = 'ALL';
+let searchQuery = '';
+let sortKey = 'hfb-asc';
+
+// ─── INIT ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof METKI_DATA !== 'undefined' && METKI_DATA.length) {
+    loadData(METKI_DATA, 'Dane wbudowane (metki.xls)');
+  }
+
+  document.getElementById('search-input').addEventListener('input', e => {
+    searchQuery = e.target.value.toLowerCase().trim();
+    render();
+  });
+
+  document.getElementById('sort-select').addEventListener('change', e => {
+    sortKey = e.target.value;
+    render();
+  });
+
+  document.getElementById('file-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) readXlsFile(file);
+    e.target.value = '';
+  });
+
+  // HFB chips (delegated)
+  document.getElementById('hfb-row').addEventListener('click', e => {
+    const chip = e.target.closest('.hfb-chip');
+    if (!chip) return;
+    document.querySelectorAll('.hfb-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    activeHfb = chip.dataset.hfb;
+    render();
+  });
+
+  // Status chips
+  document.getElementById('status-row').addEventListener('click', e => {
+    const chip = e.target.closest('.status-chip');
+    if (!chip) return;
+    document.querySelectorAll('.status-chip').forEach(c => {
+      c.classList.remove('active-all','active-ok','active-warn','active-zmiana');
+    });
+    activeStatus = chip.dataset.status;
+    const cls = {ALL:'active-all',OK:'active-ok',WARN:'active-warn',CHANGE:'active-zmiana'}[activeStatus];
+    chip.classList.add(cls);
+    render();
+  });
+
+  // Drag & drop
+  const overlay = document.getElementById('drag-overlay');
+  document.addEventListener('dragover', e => { e.preventDefault(); overlay.classList.add('active'); });
+  document.addEventListener('dragleave', e => { if (!e.relatedTarget) overlay.classList.remove('active'); });
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    overlay.classList.remove('active');
+    const file = e.dataTransfer.files[0];
+    if (file) readXlsFile(file);
+  });
+
+  // Scroll to top
+  window.addEventListener('scroll', () => {
+    document.getElementById('scroll-top').classList.toggle('visible', window.scrollY > 300);
+  });
+});
+
+// ─── LOAD DATA ────────────────────────────────────────
+function loadData(rows, sourceLabel) {
+  allData = rows.map(r => ({
+    hfb:        String(r['HFB'] || '').trim(),
+    pa:         r['Product Area'] || '',
+    artNo:      String(r['NR ART.'] || r['Article Number'] || '').trim(),
+    name:       r['NAZWA ART.'] || r['Article Name'] || '',
+    sm:         r['SM'] || '',
+    srp:        r['SRP'] || '',
+    boh:        r['BoH'] !== undefined ? r['BoH'] : (r['Base Onhand'] || ''),
+    bohLd:      r['BoH LD'] !== undefined ? r['BoH LD'] : '',
+    status:     r['Status'] || '',
+    zmianaC:    r['Zmiana ceny'] === true || r['Zmiana ceny'] === 'True' || r['Zmiana ceny'] === 'TRUE',
+    price1:     parseFloat(r['Price1']) || 0,
+    price1ld:   parseFloat(r['Price1 LD']) || 0,
+    locPrice:   parseFloat(r['Loc Price']) || 0,
+    locPriceLd: parseFloat(r['LocPrice LD']) || 0,
+    zmianaL:    r['Zmiana lokalizacji'] === true || r['Zmiana lokalizacji'] === 'True' || r['Zmiana lokalizacji'] === 'TRUE',
+    lok:        r['Lokalizacja'] || '',
+    lokLd:      r['LOK LD'] || '',
+    fprice:     parseFloat(r['FPRICE1']) || 0,
+    fpriceld:   parseFloat(r['FPRICE LD']) || 0,
+    notatki:    r['Notatki'] || '',
+    eds:        r['EDS'] || '',
+    fireclass:  r['Fireclass'] || '',
+    smdq:       r['SMDQ'] || '',
+  }));
+
+  document.getElementById('data-date-label').textContent = sourceLabel;
+  buildHfbChips();
+  render();
+}
+
+// ─── BUILD HFB CHIPS ─────────────────────────────────
+function buildHfbChips() {
+  const hfbs = [...new Set(allData.map(r => r.hfb).filter(Boolean))].sort();
+  const row = document.getElementById('hfb-row');
+  row.innerHTML = '';
+  const allChip = document.createElement('div');
+  allChip.className = 'hfb-chip active';
+  allChip.dataset.hfb = 'ALL';
+  allChip.textContent = 'Wszystkie';
+  row.appendChild(allChip);
+
+  hfbs.forEach(h => {
+    const chip = document.createElement('div');
+    chip.className = 'hfb-chip';
+    chip.dataset.hfb = h;
+    chip.textContent = 'HFB ' + h;
+    row.appendChild(chip);
+  });
+  activeHfb = 'ALL';
+}
+
+// ─── FILTER + SORT ────────────────────────────────────
+function applyFilters() {
+  filteredData = allData.filter(r => {
+    if (activeHfb !== 'ALL' && r.hfb !== activeHfb) return false;
+
+    if (activeStatus === 'OK'     && !r.status.toLowerCase().includes('dostepny')) return false;
+    if (activeStatus === 'WARN'   && !r.status.toLowerCase().includes('niedostepny')) return false;
+    if (activeStatus === 'CHANGE' && !r.zmianaC && !r.zmianaL) return false;
+
+    if (searchQuery) {
+      const haystack = [r.artNo, r.name, r.lok, r.hfb, r.pa, r.notatki].join(' ').toLowerCase();
+      if (!haystack.includes(searchQuery)) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  const [key, dir] = sortKey.split('-');
+  const asc = dir === 'asc' ? 1 : -1;
+  filteredData.sort((a, b) => {
+    let va, vb;
+    if (key === 'hfb')   { va = a.hfb;    vb = b.hfb; }
+    if (key === 'art')   { va = a.artNo;  vb = b.artNo; }
+    if (key === 'price') { va = a.price1; vb = b.price1; }
+    if (key === 'boh')   { va = Number(a.boh) || 0; vb = Number(b.boh) || 0; }
+    if (key === 'name')  { va = a.name;   vb = b.name; }
+    if (va < vb) return -1 * asc;
+    if (va > vb) return  1 * asc;
+    return 0;
+  });
+}
+
+// ─── RENDER ───────────────────────────────────────────
+function render() {
+  applyFilters();
+
+  const container = document.getElementById('cards-container');
+  const empty = document.getElementById('empty-state');
+  const badge = document.getElementById('count-badge');
+  const resultCount = document.getElementById('result-count');
+  const changeSummary = document.getElementById('change-summary');
+
+  badge.textContent = allData.length;
+  resultCount.textContent = filteredData.length;
+
+  const changes = filteredData.filter(r => r.zmianaC || r.zmianaL).length;
+  changeSummary.textContent = changes > 0 ? `🔄 Zmian: ${changes}` : '';
+
+  if (!filteredData.length) {
+    container.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  container.innerHTML = filteredData.map(r => buildCard(r)).join('');
+
+  // Details toggles
+  container.querySelectorAll('.card-details-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const details = btn.nextElementSibling;
+      const open = details.classList.toggle('open');
+      btn.textContent = open ? '▲ Mniej' : '▼ Szczegóły';
+    });
+  });
+}
+
+function fmt(val, decimals = 2) {
+  if (val === null || val === undefined || val === '' || val === 0) return '—';
+  const n = parseFloat(val);
+  if (isNaN(n)) return val;
+  return n.toFixed(decimals).replace('.', ',') + ' zł';
+}
+
+function fmtNum(val) {
+  if (val === null || val === undefined || val === '') return '—';
+  return val;
+}
+
+function buildCard(r) {
+  const isOk = r.status.toLowerCase().includes('dostepny') && !r.status.toLowerCase().includes('nie');
+  const statusClass = isOk ? 'status-ok' : 'status-warn';
+  const statusLabel = isOk ? '✓ Dostępny' : '✗ Niedostępny';
+  const hasChange = r.zmianaC || r.zmianaL;
+
+  const priceChanged = r.zmianaC;
+  const lokChanged = r.zmianaL;
+
+  const priceDisplay = r.locPrice > 0 ? r.locPrice : r.price1;
+  const priceClass = priceChanged ? 'price changed' : 'price';
+
+  const lokDisplay = r.lok || '—';
+  const lokClass = lokChanged ? 'loc-changed' : '';
+
+  const changeBadges =
+    (priceChanged ? '<span class="change-badge badge-price">Zmiana ceny</span>' : '') +
+    (lokChanged   ? '<span class="change-badge badge-lok">Zmiana lok.</span>' : '');
+
+  const noteHtml = r.notatki && r.notatki !== 'OK.' && r.notatki !== 'OK'
+    ? `<div class="card-note">📋 ${esc(r.notatki)}</div>`
+    : '';
+
+  return `
+  <div class="article-card${hasChange ? ' has-change' : ''}">
+    <div class="card-top">
+      <span class="card-hfb">HFB ${esc(r.hfb)}</span>
+      <span class="card-art-no">${esc(r.artNo)}</span>
+      ${changeBadges}
+      <span class="card-status ${statusClass}">${statusLabel}</span>
+    </div>
+    <div class="card-body">
+      <div class="card-name">${esc(r.name)}</div>
+      <div class="card-grid">
+        <div class="card-field">
+          <span class="card-field-label">Cena</span>
+          <span class="card-field-value ${priceClass}">${fmt(priceDisplay)}</span>
+        </div>
+        <div class="card-field">
+          <span class="card-field-label">Lokalizacja</span>
+          <span class="card-field-value ${lokClass}">${esc(lokDisplay)}</span>
+        </div>
+        <div class="card-field">
+          <span class="card-field-label">BoH</span>
+          <span class="card-field-value">${fmtNum(r.boh)}</span>
+        </div>
+        <div class="card-field">
+          <span class="card-field-label">Product Area</span>
+          <span class="card-field-value">${esc(String(r.pa))}</span>
+        </div>
+      </div>
+      ${noteHtml}
+    </div>
+    <button class="card-details-toggle">▼ Szczegóły</button>
+    <div class="card-details">
+      <div class="card-details-grid">
+        <div class="detail-row"><span class="detail-label">SM</span><span class="detail-value">${fmtNum(r.sm)}</span></div>
+        <div class="detail-row"><span class="detail-label">SRP</span><span class="detail-value">${fmtNum(r.srp)}</span></div>
+        <div class="detail-row"><span class="detail-label">BoH LD</span><span class="detail-value">${fmtNum(r.bohLd)}</span></div>
+        <div class="detail-row"><span class="detail-label">Price1 LD</span><span class="detail-value">${fmt(r.price1ld)}</span></div>
+        <div class="detail-row"><span class="detail-label">Loc Price LD</span><span class="detail-value">${fmt(r.locPriceLd)}</span></div>
+        <div class="detail-row"><span class="detail-label">LOK LD</span><span class="detail-value">${esc(String(r.lokLd || '—'))}</span></div>
+        <div class="detail-row"><span class="detail-label">Family Price</span><span class="detail-value">${fmt(r.fprice)}</span></div>
+        <div class="detail-row"><span class="detail-label">Family Price LD</span><span class="detail-value">${fmt(r.fpriceld)}</span></div>
+        <div class="detail-row"><span class="detail-label">EDS</span><span class="detail-value">${fmtNum(r.eds) || '—'}</span></div>
+        <div class="detail-row"><span class="detail-label">Fireclass</span><span class="detail-value">${esc(String(r.fireclass || '—'))}</span></div>
+        <div class="detail-row"><span class="detail-label">SMDQ</span><span class="detail-value">${esc(String(r.smdq || '—'))}</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ─── READ XLS FILE ────────────────────────────────────
+function readXlsFile(file) {
+  const label = document.getElementById('data-date-label');
+  label.textContent = '⏳ Wczytywanie…';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+
+      // Try "Data" sheet first, fallback to first sheet
+      const sheetName = wb.SheetNames.includes('Data') ? 'Data' : wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+      if (!rows.length) {
+        alert('Arkusz "' + sheetName + '" jest pusty lub nie można go odczytać.');
+        label.textContent = 'Błąd wczytywania';
+        return;
+      }
+
+      const now = new Date();
+      const ts = now.toLocaleDateString('pl-PL') + ' ' + now.toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit'});
+      loadData(rows, `${file.name} (${ts}) – arkusz: ${sheetName}`);
+    } catch(err) {
+      console.error(err);
+      alert('Błąd odczytu pliku: ' + err.message);
+      label.textContent = 'Błąd wczytywania';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+</script>
+</body>
+</html>
