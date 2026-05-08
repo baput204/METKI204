@@ -50,7 +50,8 @@
       margin-left: auto;
       margin-right: auto;
     }
-    #filters-bar > * {
+    /* tylko search-row wycentrowany — hfb-row i status-row muszą być pełnej szerokości do scrollowania */
+    #search-row {
       max-width: 620px;
       margin-left: auto;
       margin-right: auto;
@@ -590,10 +591,11 @@
 // ─── STATE ───────────────────────────────────────────
 let allData = [];
 let filteredData = [];
-let activeHfb = 'ALL';
-let activeStatus = 'ALL';
+let activeHfbSet = new Set();
+let activeStatusSet = new Set();
 let searchQuery = '';
-let sortKey = 'hfb-asc';let checkedArticles = new Set(JSON.parse(localStorage.getItem('metki_checked') || '[]'));
+let sortKey = 'hfb-asc';
+let checkedArticles = new Set(JSON.parse(localStorage.getItem('metki_checked') || '[]'));
 // ─── INIT ─────────────────────────────────────────────
 function fixStickyOffset() {
   const hh = document.getElementById('app-header').offsetHeight;
@@ -621,9 +623,22 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('hfb-row').addEventListener('click', e => {
     const chip = e.target.closest('.hfb-chip');
     if (!chip) return;
+    const val = chip.dataset.hfb;
+    if (val === 'ALL') {
+      activeHfbSet.clear();
+    } else {
+      if (activeHfbSet.has(val)) activeHfbSet.delete(val);
+      else activeHfbSet.add(val);
+    }
     document.querySelectorAll('.hfb-chip').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    activeHfb = chip.dataset.hfb;
+    if (activeHfbSet.size === 0) {
+      document.querySelector('.hfb-chip[data-hfb="ALL"]').classList.add('active');
+    } else {
+      activeHfbSet.forEach(h => {
+        const c = document.querySelector(`.hfb-chip[data-hfb="${h}"]`);
+        if (c) c.classList.add('active');
+      });
+    }
     render();
   });
 
@@ -631,12 +646,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('status-row').addEventListener('click', e => {
     const chip = e.target.closest('.status-chip');
     if (!chip) return;
-    document.querySelectorAll('.status-chip').forEach(c => {
-      c.classList.remove('active-all','active-ok','active-warn','active-zmiana');
-    });
-    activeStatus = chip.dataset.status;
-    const cls = {ALL:'active-all',OK:'active-ok',WARN:'active-warn',CHANGE:'active-zmiana',CHECKED:'active-checked',UNCHECKED:'active-unchecked'}[activeStatus];
-    chip.classList.add(cls);
+    const val = chip.dataset.status;
+    if (val === 'ALL') {
+      activeStatusSet.clear();
+    } else {
+      if (activeStatusSet.has(val)) activeStatusSet.delete(val);
+      else activeStatusSet.add(val);
+    }
+    updateStatusChipStyles();
     render();
   });
 
@@ -702,21 +719,37 @@ function buildHfbChips() {
     chip.textContent = 'HFB ' + h;
     row.appendChild(chip);
   });
-  activeHfb = 'ALL';
+  activeHfbSet = new Set();
 }
 
 // ─── FILTER + SORT ────────────────────────────────────
+function updateStatusChipStyles() {
+  const clsMap = {ALL:'active-all',OK:'active-ok',WARN:'active-warn',CHANGE:'active-zmiana',CHECKED:'active-checked',UNCHECKED:'active-unchecked'};
+  document.querySelectorAll('.status-chip').forEach(c => {
+    Object.values(clsMap).forEach(cls => c.classList.remove(cls));
+    const v = c.dataset.status;
+    if (v === 'ALL' && activeStatusSet.size === 0) c.classList.add('active-all');
+    else if (activeStatusSet.has(v)) c.classList.add(clsMap[v]);
+  });
+}
+
 function applyFilters() {
   filteredData = allData.filter(r => {
-    if (activeHfb !== 'ALL' && r.hfb !== activeHfb) return false;
+    // HFB filter (multi-select OR)
+    if (activeHfbSet.size > 0 && !activeHfbSet.has(r.hfb)) return false;
 
-    const st = r.status.toLowerCase();
-    const isOk = st.includes('dostepny') && !st.includes('nie');
-    if (activeStatus === 'OK'   && !isOk) return false;
-    if (activeStatus === 'WARN' && isOk)  return false;
-    if (activeStatus === 'CHANGE' && !r.zmianaC && !r.zmianaL) return false;
-    if (activeStatus === 'CHECKED'   && !checkedArticles.has(r.artNo)) return false;
-    if (activeStatus === 'UNCHECKED' &&  checkedArticles.has(r.artNo)) return false;
+    // Status filter (multi-select OR)
+    if (activeStatusSet.size > 0) {
+      const st = r.status.toLowerCase();
+      const isOk = st.includes('dostepny') && !st.includes('nie');
+      let matches = false;
+      if (activeStatusSet.has('OK')        && isOk) matches = true;
+      if (activeStatusSet.has('WARN')      && !isOk) matches = true;
+      if (activeStatusSet.has('CHANGE')    && (r.zmianaC || r.zmianaL)) matches = true;
+      if (activeStatusSet.has('CHECKED')   && checkedArticles.has(r.artNo)) matches = true;
+      if (activeStatusSet.has('UNCHECKED') && !checkedArticles.has(r.artNo)) matches = true;
+      if (!matches) return false;
+    }
 
     if (searchQuery) {
       const haystack = [r.artNo, r.name, r.lok, r.hfb, r.pa, r.notatki, r.status].join(' ').toLowerCase();
@@ -869,7 +902,7 @@ function toggleChecked(artNo) {
   document.getElementById('clear-checks-btn').style.display = checkedArticles.size > 0 ? 'inline-block' : 'none';
 
   // if filtering by checked/unchecked, re-render
-  if (activeStatus === 'CHECKED' || activeStatus === 'UNCHECKED') render();
+  if (activeStatusSet.has('CHECKED') || activeStatusSet.has('UNCHECKED')) render();
 }
 
 function clearAllChecked() {
