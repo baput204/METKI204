@@ -45,11 +45,6 @@
       margin-right: auto;
       box-sizing: border-box;
     }
-    #app-header h1, #data-update-info {
-      max-width: 620px;
-      margin-left: auto;
-      margin-right: auto;
-    }
     /* tylko search-row wycentrowany — hfb-row i status-row muszą być pełnej szerokości do scrollowania */
     #search-row {
       max-width: 620px;
@@ -66,6 +61,15 @@
       color: #fff;
       padding: 10px 12px 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+    #header-inner {
+      max-width: 620px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
     }
 
     #app-header h1 {
@@ -87,10 +91,30 @@
     }
 
     #data-update-info {
+      max-width: 620px;
+      margin: 3px auto 0;
       font-size: 11px;
       opacity: 0.8;
-      margin-top: 3px;
     }
+
+    #history-select {
+      font-size: 11px;
+      padding: 4px 22px 4px 8px;
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.15);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='white'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+      color: #fff;
+      outline: none;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      flex-shrink: 0;
+      display: none;
+    }
+    #history-select option { background: var(--ikea-blue-dark); color: #fff; }
 
     /* ── FILTERS ── */
     #filters-bar {
@@ -532,10 +556,13 @@
 
 <!-- Header -->
 <header id="app-header">
-  <h1>
-    🏷️ Metki
-    <span class="badge" id="count-badge">0</span>
-  </h1>
+  <div id="header-inner">
+    <h1>
+      🏷️ Metki
+      <span class="badge" id="count-badge">0</span>
+    </h1>
+    <select id="history-select" title="Wybierz datę archiwum"></select>
+  </div>
   <div id="data-update-info">Dane zaktualizowane: <span id="data-date-label">–</span></div>
 </header>
 
@@ -676,6 +703,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const file = e.dataTransfer.files[0];
     if (file) readXlsFile(file);
   });
+
+  // Historia dat
+  (async () => {
+    try {
+      const res = await fetch('data/manifest.json?_=' + Date.now());
+      if (!res.ok) return;
+      const dates = (await res.json()).sort().reverse(); // newest first
+      if (!dates.length) return;
+      const sel = document.getElementById('history-select');
+      const todayISO = new Date().toISOString().slice(0, 10);
+      dates.forEach(d => {
+        const [y, m, day] = d.split('-');
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = `${day}.${m}.${y}`;
+        if (d === todayISO) opt.textContent += ' ✦';
+        sel.appendChild(opt);
+      });
+      sel.style.display = '';
+      sel.addEventListener('change', async () => {
+        const iso = sel.value;
+        const todayISO2 = new Date().toISOString().slice(0, 10);
+        if (iso === todayISO2 && typeof METKI_DATA !== 'undefined') {
+          loadData(METKI_DATA, typeof METKI_DATA_DATE !== 'undefined' ? METKI_DATA_DATE : iso);
+          return;
+        }
+        document.getElementById('data-date-label').textContent = '⏳ Ładowanie…';
+        try {
+          const r = await fetch(`data/${iso}.json?_=` + Date.now());
+          if (!r.ok) throw new Error('404');
+          const obj = await r.json();
+          loadData(obj.rows, obj.date);
+        } catch {
+          document.getElementById('data-date-label').textContent = 'Błąd ładowania';
+        }
+      });
+    } catch { /* manifest brak - stara wersja bez historii */ }
+  })();
 
   // Scroll: follow-scroll filter bar (śledzi prędkość scrolla)
   const filtersBar = document.getElementById('filters-bar');
