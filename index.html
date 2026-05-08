@@ -94,7 +94,9 @@
 
     /* ── FILTERS ── */
     #filters-bar {
-      position: sticky;
+      position: fixed;
+      left: 0;
+      right: 0;
       top: 0; /* nadpisywane przez JS po zmierzeniu headera */
       z-index: 99;
       background: #fff;
@@ -104,6 +106,7 @@
       flex-direction: column;
       gap: 6px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+      will-change: transform;
     }
 
     #search-row {
@@ -568,6 +571,9 @@
   </div>
 </div>
 
+<!-- Placeholder rezerwujący miejsce po filters-bar (który jest fixed) -->
+<div id="filters-placeholder"></div>
+
 <!-- Summary -->
 <div id="summary-bar">
   <div>Wyniki: <span id="result-count">0</span></div>
@@ -599,7 +605,10 @@ let checkedArticles = new Set(JSON.parse(localStorage.getItem('metki_checked') |
 // ─── INIT ─────────────────────────────────────────────
 function fixStickyOffset() {
   const hh = document.getElementById('app-header').offsetHeight;
-  document.getElementById('filters-bar').style.top = hh + 'px';
+  const fb = document.getElementById('filters-bar');
+  fb.style.top = hh + 'px';
+  const ph = document.getElementById('filters-placeholder');
+  if (ph) ph.style.height = fb.offsetHeight + 'px';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -744,6 +753,7 @@ function buildHfbChips() {
     row.appendChild(chip);
   });
   activeHfbSet = new Set();
+  requestAnimationFrame(fixStickyOffset);
 }
 
 // ─── FILTER + SORT ────────────────────────────────────
