@@ -32,6 +32,9 @@ $wb.Close($false)
 $excel.Quit()
 [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
 
+# Filtruj puste wiersze
+$all = $all | Where-Object { $_['NAZWA ART.'] -ne '' -or ($_['NR ART.'] -replace '^0+','') -ne '' }
+
 $json = $all | ConvertTo-Json -Compress
 $dateStr = Get-Date -Format "dd.MM.yyyy"
 $content = "const METKI_DATA_DATE = `"$dateStr`";`nconst METKI_DATA = $json;"
