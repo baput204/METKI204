@@ -377,6 +377,24 @@
     .sort-asc::after  { content: ' ▲'; font-size: 9px; }
     .sort-desc::after { content: ' ▼'; font-size: 9px; }
 
+    /* ── CARD IMAGE ── */
+    .card-inner { display: flex; }
+    .card-img {
+      width: 72px;
+      flex-shrink: 0;
+      background: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid #eee;
+      font-size: 24px;
+      color: #ccc;
+      align-self: stretch;
+      overflow: hidden;
+    }
+    .card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card-main { flex: 1; min-width: 0; }
+
     /* ── SCROLL TO TOP ── */
     #scroll-top {
       position: fixed;
@@ -633,6 +651,7 @@ function render() {
   empty.style.display = 'none';
 
   container.innerHTML = filteredData.map(r => buildCard(r)).join('');
+  loadVisibleImages();
 }
 
 function fmtBoh(val) {
@@ -658,6 +677,9 @@ function buildCard(r) {
 
   return `
   <div class="article-card${hasChange ? ' has-change' : ''}">
+    <div class="card-inner">
+      <div class="card-img" data-artno="${r.artNo}">📷</div>
+      <div class="card-main">
     <div class="card-top">
       <span class="card-hfb">HFB ${esc(r.hfb)}</span>
       <span class="card-art-no" style="font-size:11px;color:#777">${esc(r.pa)}</span>
@@ -690,6 +712,8 @@ function buildCard(r) {
       </div>
       ${noteHtml}
     </div>
+      </div>
+    </div>
   </div>`;
 }
 
@@ -700,6 +724,59 @@ function esc(s) {
     .replace(/</g,'&lt;')
     .replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;');
+}
+
+// ─── ARTICLE IMAGES ──────────────────────────────────
+const imageCache = new Map();
+
+function findBestImage(obj) {
+  let best = null;
+  (function traverse(o) {
+    if (!o || typeof o !== 'object') return;
+    for (const k in o) {
+      if (typeof o[k] === 'string') {
+        const v = o[k].toLowerCase();
+        if (v.match(/\.(jpg|jpeg|png|webp|avif)(\?.*)?$/) && !v.includes('.svg')) {
+          let url = o[k];
+          if (url.startsWith('//')) url = 'https:' + url;
+          else if (url.startsWith('/')) url = 'https://www.ikea.com' + url;
+          if (!best || url.includes('s5') || url.includes('main')) best = url;
+        }
+      } else traverse(o[k]);
+    }
+  })(obj);
+  return best;
+}
+
+async function fetchArticleImage(artNo) {
+  if (imageCache.has(artNo)) return imageCache.get(artNo);
+  try {
+    const res = await fetch(`https://sik.search.blue.cdtapps.com/pl/pl/search-box?q=${artNo}`);
+    if (!res.ok) throw new Error();
+    const url = findBestImage(await res.json());
+    imageCache.set(artNo, url || null);
+    return url || null;
+  } catch {
+    imageCache.set(artNo, null);
+    return null;
+  }
+}
+
+function loadVisibleImages() {
+  const divs = document.querySelectorAll('.card-img[data-artno]');
+  if (!divs.length) return;
+  const obs = new IntersectionObserver(async (entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const div = entry.target;
+      obs.unobserve(div);
+      const url = await fetchArticleImage(div.dataset.artno);
+      div.innerHTML = url
+        ? `<img src="${url}" alt="" loading="lazy" onerror="this.parentElement.textContent='📦'">`
+        : '📦';
+    }
+  }, { rootMargin: '200px' });
+  divs.forEach(d => obs.observe(d));
 }
 
 // ─── READ XLS FILE ────────────────────────────────────
