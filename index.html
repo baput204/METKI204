@@ -104,10 +104,6 @@
       flex-direction: column;
       gap: 6px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.06);
-      transition: transform 0.28s ease;
-    }
-    #filters-bar.filters-hidden {
-      transform: translateY(-110%);
     }
 
     #search-row {
@@ -672,25 +668,34 @@ document.addEventListener('DOMContentLoaded', () => {
     if (file) readXlsFile(file);
   });
 
-  // Scroll: auto-hide filters on scroll-down, show on scroll-up
-  let _lastScrollY = 0;
-  let _scrollTick = false;
+  // Scroll: follow-scroll filter bar (śledzi prędkość scrolla)
+  const filtersBar = document.getElementById('filters-bar');
+  let _filterOffset = 0; // 0 = widoczny, ujemny = schowany
+  let _lastScrollY = window.scrollY;
+  let _snapTimer = null;
+
+  function snapFilters() {
+    const maxH = filtersBar.offsetHeight;
+    filtersBar.style.transition = 'transform 0.2s ease';
+    _filterOffset = (_filterOffset < -maxH / 2) ? -maxH : 0;
+    filtersBar.style.transform = `translateY(${_filterOffset}px)`;
+  }
+
   window.addEventListener('scroll', () => {
-    if (_scrollTick) return;
-    _scrollTick = true;
-    requestAnimationFrame(() => {
-      const y = window.scrollY;
-      const filtersBar = document.getElementById('filters-bar');
-      if (y > 80 && y > _lastScrollY) {
-        filtersBar.classList.add('filters-hidden');
-      } else if (y < _lastScrollY) {
-        filtersBar.classList.remove('filters-hidden');
-      }
-      _lastScrollY = y;
-      document.getElementById('scroll-top').classList.toggle('visible', y > 300);
-      _scrollTick = false;
-    });
-  });
+    const y = window.scrollY;
+    const delta = y - _lastScrollY;
+    _lastScrollY = y;
+
+    const maxH = filtersBar.offsetHeight;
+    _filterOffset = Math.min(0, Math.max(-maxH, _filterOffset - delta));
+    filtersBar.style.transition = 'none';
+    filtersBar.style.transform = `translateY(${_filterOffset}px)`;
+
+    document.getElementById('scroll-top').classList.toggle('visible', y > 300);
+
+    clearTimeout(_snapTimer);
+    _snapTimer = setTimeout(snapFilters, 160);
+  }, { passive: true });
 });
 
 // ─── LOAD DATA ────────────────────────────────────────
