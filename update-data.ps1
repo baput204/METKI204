@@ -37,13 +37,32 @@ $all = $all | Where-Object { $_['NAZWA ART.'] -ne '' -or ($_['NR ART.'] -replace
 
 $json = $all | ConvertTo-Json -Compress
 $dateStr = Get-Date -Format "dd.MM.yyyy"
+$isoDate = Get-Date -Format "yyyy-MM-dd"
 $content = "const METKI_DATA_DATE = `"$dateStr`";`nconst METKI_DATA = $json;"
 # Zapisz UTF-8 BEZ BOM (Out-File dodaje BOM w PS 5.1)
 [System.IO.File]::WriteAllText($outPath, $content, (New-Object System.Text.UTF8Encoding $false))
 
+# Zapisz plik historyczny data/YYYY-MM-DD.json (nadpisz jesli ten sam dzien)
+$dataDir = Join-Path $PSScriptRoot "data"
+if (!(Test-Path $dataDir)) { New-Item -ItemType Directory -Path $dataDir | Out-Null }
+$histJson = '{"date":"' + $dateStr + '","rows":' + $json + '}'
+[System.IO.File]::WriteAllText("$dataDir\$isoDate.json", $histJson, (New-Object System.Text.UTF8Encoding $false))
+
+# Zaktualizuj manifest.json (dodaj date jesli jej nie ma)
+$manifestPath = Join-Path $dataDir "manifest.json"
+$manifestDates = @()
+if (Test-Path $manifestPath) {
+    $manifestDates = Get-Content $manifestPath -Encoding UTF8 | ConvertFrom-Json
+}
+if ($manifestDates -notcontains $isoDate) { $manifestDates += $isoDate }
+$manifestJson = ($manifestDates | Sort-Object) | ConvertTo-Json -Compress
+if ($manifestJson -notmatch '^\[') { $manifestJson = "[$manifestJson]" }
+[System.IO.File]::WriteAllText($manifestPath, $manifestJson, (New-Object System.Text.UTF8Encoding $false))
+
 Write-Host "Zapisano $($all.Count) wierszy do $outPath"
+Write-Host "Historia: $dataDir\$isoDate.json"
 Write-Host ""
 Write-Host "Teraz wykonaj:"
-Write-Host "  git add data.js"
-Write-Host "  git commit -m `"update: metki $(Get-Date -Format 'yyyy-MM-dd')`""
+Write-Host "  git add data.js data/"
+Write-Host "  git commit -m `"update: metki $isoDate`""
 Write-Host "  git push"
