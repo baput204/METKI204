@@ -38,13 +38,18 @@
     }
 
     /* ── LAYOUT MAX-WIDTH (desktop) ── */
-    #filters-bar, #summary-bar, #cards-container, #empty-state {
+    #summary-bar, #cards-container, #empty-state {
       max-width: 620px;
       margin-left: auto;
       margin-right: auto;
       box-sizing: border-box;
     }
     #app-header h1, #data-update-info {
+      max-width: 620px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #filters-bar > * {
       max-width: 620px;
       margin-left: auto;
       margin-right: auto;
@@ -251,11 +256,10 @@
       margin-left: auto;
       font-size: 10px;
       font-weight: 700;
-      padding: 2px 6px;
+      padding: 2px 7px;
       border-radius: 9px;
       white-space: nowrap;
-      flex-shrink: 1;
-      min-width: 0;
+      flex-shrink: 0;
     }
     .status-ok   { background: var(--ok-green-bg);  color: var(--ok-green); }
     .status-warn { background: var(--warn-red-bg);  color: var(--warn-red); }
@@ -776,7 +780,7 @@ function fmtBoh(val) {
 function buildCard(r) {
   const isOk = r.status.toLowerCase().includes('dostepny') && !r.status.toLowerCase().includes('nie');
   const statusClass = isOk ? 'status-ok' : 'status-warn';
-  const statusLabel = isOk ? '✓ Dostępny' : '✗ Niedostępny';
+  const statusLabel = isOk ? 'Dostępny' : 'Niedostępny';
   const hasChange = r.zmianaC || r.zmianaL;
   const lokClass = r.zmianaL ? 'loc-changed' : '';
   const isChecked = checkedArticles.has(r.artNo);
