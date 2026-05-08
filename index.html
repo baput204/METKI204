@@ -580,8 +580,10 @@ function applyFilters() {
   filteredData = allData.filter(r => {
     if (activeHfb !== 'ALL' && r.hfb !== activeHfb) return false;
 
-    if (activeStatus === 'OK'     && !r.status.toLowerCase().includes('dostepny')) return false;
-    if (activeStatus === 'WARN'   && !r.status.toLowerCase().includes('niedostepny')) return false;
+    const st = r.status.toLowerCase();
+    const isOk = st.includes('dostepny') && !st.includes('nie');
+    if (activeStatus === 'OK'   && !isOk) return false;
+    if (activeStatus === 'WARN' && isOk)  return false;
     if (activeStatus === 'CHANGE' && !r.zmianaC && !r.zmianaL) return false;
 
     if (searchQuery) {
