@@ -38,7 +38,8 @@ $all = $all | Where-Object { $_['NAZWA ART.'] -ne '' -or ($_['NR ART.'] -replace
 $json = $all | ConvertTo-Json -Compress
 $dateStr = Get-Date -Format "dd.MM.yyyy"
 $content = "const METKI_DATA_DATE = `"$dateStr`";`nconst METKI_DATA = $json;"
-$content | Out-File $outPath -Encoding UTF8
+# Zapisz UTF-8 BEZ BOM (Out-File dodaje BOM w PS 5.1)
+[System.IO.File]::WriteAllText($outPath, $content, (New-Object System.Text.UTF8Encoding $false))
 
 Write-Host "Zapisano $($all.Count) wierszy do $outPath"
 Write-Host ""
