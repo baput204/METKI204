@@ -175,6 +175,8 @@
     .status-chip.active-warn  { background: var(--warn-red);   color: #fff; border-color: var(--warn-red); }
     .status-chip.active-all   { background: var(--ikea-blue);  color: #fff; border-color: var(--ikea-blue); }
     .status-chip.active-zmiana{ background: var(--change-orange); color: #fff; border-color: var(--change-orange); }
+    .status-chip.active-checked { background: var(--ok-green); color: #fff; border-color: var(--ok-green); }
+    .status-chip.active-unchecked { background: #555; color: #fff; border-color: #555; }
 
     /* ── SUMMARY BAR ── */
     #summary-bar {
@@ -377,6 +379,78 @@
     .sort-asc::after  { content: ' ▲'; font-size: 9px; }
     .sort-desc::after { content: ' ▼'; font-size: 9px; }
 
+    /* ── LIGHTBOX ── */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      cursor: zoom-out;
+    }
+    #lightbox.open { display: flex; }
+    #lightbox img {
+      max-width: 90vw;
+      max-height: 80vh;
+      border-radius: 8px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      object-fit: contain;
+      cursor: default;
+    }
+    #lightbox-name {
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      max-width: 80vw;
+      opacity: 0.9;
+    }
+    #lightbox-close {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      color: #fff;
+      font-size: 28px;
+      cursor: pointer;
+      line-height: 1;
+      opacity: 0.8;
+    }
+
+    /* ── CHECKED CARDS ── */
+    .article-card.is-checked {
+      opacity: 0.45;
+    }
+    .article-card.is-checked .card-img {
+      background: #d4edda;
+    }
+    .btn-check {
+      flex-shrink: 0;
+      margin-left: 6px;
+      background: none;
+      border: 1.5px solid #ddd;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ccc;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .btn-check.checked {
+      background: var(--ok-green);
+      border-color: var(--ok-green);
+      color: #fff;
+    }
+
     /* ── CARD IMAGE ── */
     .card-inner { display: flex; }
     .card-img {
@@ -393,6 +467,7 @@
       overflow: hidden;
     }
     .card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card-img.has-img { cursor: zoom-in; }
     .card-main { flex: 1; min-width: 0; }
 
     /* ── SCROLL TO TOP ── */
@@ -418,6 +493,13 @@
   </style>
 </head>
 <body>
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="closeLightbox()">
+  <span id="lightbox-close">&times;</span>
+  <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+  <div id="lightbox-name"></div>
+</div>
 
 <!-- Drag & drop overlay -->
 <div id="drag-overlay">
@@ -461,13 +543,18 @@
     <div class="status-chip" data-status="OK">✅ Dostępny</div>
     <div class="status-chip" data-status="WARN">❌ Niedostępny</div>
     <div class="status-chip" data-status="CHANGE">🔄 Zmiana</div>
+    <div class="status-chip" data-status="UNCHECKED">📌 Niesprawdzone</div>
+    <div class="status-chip" data-status="CHECKED">✔️ Sprawdzone</div>
   </div>
 </div>
 
 <!-- Summary -->
 <div id="summary-bar">
   <div>Wyniki: <span id="result-count">0</span></div>
-  <div id="change-summary"></div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <div id="change-summary"></div>
+    <button id="clear-checks-btn" onclick="clearAllChecked()" style="display:none;font-size:11px;padding:2px 8px;border:1px solid #ccc;border-radius:10px;background:#fff;cursor:pointer;color:#555;">Wyczyść sprawdzone</button>
+  </div>
 </div>
 
 <!-- Cards -->
@@ -487,8 +574,7 @@ let filteredData = [];
 let activeHfb = 'ALL';
 let activeStatus = 'ALL';
 let searchQuery = '';
-let sortKey = 'hfb-asc';
-
+let sortKey = 'hfb-asc';let checkedArticles = new Set(JSON.parse(localStorage.getItem('metki_checked') || '[]'));
 // ─── INIT ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof METKI_DATA !== 'undefined' && METKI_DATA.length) {
@@ -523,7 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
       c.classList.remove('active-all','active-ok','active-warn','active-zmiana');
     });
     activeStatus = chip.dataset.status;
-    const cls = {ALL:'active-all',OK:'active-ok',WARN:'active-warn',CHANGE:'active-zmiana'}[activeStatus];
+    const cls = {ALL:'active-all',OK:'active-ok',WARN:'active-warn',CHANGE:'active-zmiana',CHECKED:'active-checked',UNCHECKED:'active-unchecked'}[activeStatus];
     chip.classList.add(cls);
     render();
   });
@@ -603,6 +689,8 @@ function applyFilters() {
     if (activeStatus === 'OK'   && !isOk) return false;
     if (activeStatus === 'WARN' && isOk)  return false;
     if (activeStatus === 'CHANGE' && !r.zmianaC && !r.zmianaL) return false;
+    if (activeStatus === 'CHECKED'   && !checkedArticles.has(r.artNo)) return false;
+    if (activeStatus === 'UNCHECKED' &&  checkedArticles.has(r.artNo)) return false;
 
     if (searchQuery) {
       const haystack = [r.artNo, r.name, r.lok, r.hfb, r.pa, r.notatki, r.status].join(' ').toLowerCase();
@@ -643,6 +731,9 @@ function render() {
   const changes = filteredData.filter(r => r.zmianaC || r.zmianaL).length;
   changeSummary.textContent = changes > 0 ? `🔄 Zmian: ${changes}` : '';
 
+  // show/hide clear-checks button
+  document.getElementById('clear-checks-btn').style.display = checkedArticles.size > 0 ? 'inline-block' : 'none';
+
   if (!filteredData.length) {
     container.innerHTML = '';
     empty.style.display = 'block';
@@ -667,6 +758,7 @@ function buildCard(r) {
   const statusLabel = isOk ? '✓ Dostępny' : '✗ Niedostępny';
   const hasChange = r.zmianaC || r.zmianaL;
   const lokClass = r.zmianaL ? 'loc-changed' : '';
+  const isChecked = checkedArticles.has(r.artNo);
 
   const noteHtml = r.notatki && r.notatki.trim() && r.notatki.trim() !== 'OK.' && r.notatki.trim() !== 'OK'
     ? `<div class="card-note">📋 ${esc(r.notatki)}</div>`
@@ -676,7 +768,7 @@ function buildCard(r) {
   const zmLokIcon   = r.zmianaL ? '<span style="color:var(--ok-green);font-size:15px" title="Zmiana lokalizacji">📍</span>' : '<span style="color:#ccc;font-size:15px">✕</span>';
 
   return `
-  <div class="article-card${hasChange ? ' has-change' : ''}">
+  <div class="article-card${hasChange ? ' has-change' : ''}${isChecked ? ' is-checked' : ''}" id="card-${r.artNo}">
     <div class="card-inner">
       <div class="card-img" data-artno="${r.artNo}">📷</div>
       <div class="card-main">
@@ -685,6 +777,7 @@ function buildCard(r) {
       <span class="card-art-no" style="font-size:11px;color:#777">${esc(r.pa)}</span>
       <span class="card-art-no">${esc(r.artNo)}</span>
       <span class="card-status ${statusClass}">${statusLabel}</span>
+      <button class="btn-check${isChecked ? ' checked' : ''}" onclick="toggleChecked('${r.artNo}')" title="Oznacz jako sprawdzone">✓</button>
     </div>
     <div class="card-body">
       <div class="card-name">${esc(r.name)}</div>
@@ -725,6 +818,51 @@ function esc(s) {
     .replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;');
 }
+
+// ─── CHECKED ARTICLES ────────────────────────────────
+function toggleChecked(artNo) {
+  if (checkedArticles.has(artNo)) {
+    checkedArticles.delete(artNo);
+  } else {
+    checkedArticles.add(artNo);
+  }
+  localStorage.setItem('metki_checked', JSON.stringify([...checkedArticles]));
+
+  // update card in-place (no full re-render)
+  const card = document.getElementById('card-' + artNo);
+  if (card) {
+    const checked = checkedArticles.has(artNo);
+    card.classList.toggle('is-checked', checked);
+    const btn = card.querySelector('.btn-check');
+    if (btn) btn.classList.toggle('checked', checked);
+    const img = card.querySelector('.card-img');
+    if (img) img.style.background = checked ? '#d4edda' : '';
+  }
+
+  // update clear-checks button visibility
+  document.getElementById('clear-checks-btn').style.display = checkedArticles.size > 0 ? 'inline-block' : 'none';
+
+  // if filtering by checked/unchecked, re-render
+  if (activeStatus === 'CHECKED' || activeStatus === 'UNCHECKED') render();
+}
+
+function clearAllChecked() {
+  checkedArticles.clear();
+  localStorage.removeItem('metki_checked');
+  render();
+}
+
+// ─── LIGHTBOX ─────────────────────────────────────────
+function openLightbox(url, artNo) {
+  const lb = document.getElementById('lightbox');
+  document.getElementById('lightbox-img').src = url;
+  document.getElementById('lightbox-name').textContent = artNo ? 'Art. ' + artNo : '';
+  lb.classList.add('open');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
 // ─── ARTICLE IMAGES ──────────────────────────────────
 const imageCache = new Map();
@@ -774,6 +912,10 @@ function loadVisibleImages() {
       div.innerHTML = url
         ? `<img src="${url}" alt="" loading="lazy" onerror="this.parentElement.textContent='📦'">`
         : '📦';
+      if (url) {
+        div.classList.add('has-img');
+        div.onclick = () => openLightbox(url, div.dataset.artno);
+      }
     }
   }, { rootMargin: '200px' });
   divs.forEach(d => obs.observe(d));
