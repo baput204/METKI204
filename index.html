@@ -104,6 +104,10 @@
       flex-direction: column;
       gap: 6px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+      transition: transform 0.28s ease;
+    }
+    #filters-bar.filters-hidden {
+      transform: translateY(-110%);
     }
 
     #search-row {
@@ -668,9 +672,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (file) readXlsFile(file);
   });
 
-  // Scroll to top
+  // Scroll: auto-hide filters on scroll-down, show on scroll-up
+  let _lastScrollY = 0;
+  let _scrollTick = false;
   window.addEventListener('scroll', () => {
-    document.getElementById('scroll-top').classList.toggle('visible', window.scrollY > 300);
+    if (_scrollTick) return;
+    _scrollTick = true;
+    requestAnimationFrame(() => {
+      const y = window.scrollY;
+      const filtersBar = document.getElementById('filters-bar');
+      if (y > 80 && y > _lastScrollY) {
+        filtersBar.classList.add('filters-hidden');
+      } else if (y < _lastScrollY) {
+        filtersBar.classList.remove('filters-hidden');
+      }
+      _lastScrollY = y;
+      document.getElementById('scroll-top').classList.toggle('visible', y > 300);
+      _scrollTick = false;
+    });
   });
 });
 
