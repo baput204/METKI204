@@ -36,7 +36,7 @@ $excel.Quit()
 $all = $all | Where-Object { $_['NAZWA ART.'] -ne '' -or ($_['NR ART.'] -replace '^0+','') -ne '' }
 
 $json = $all | ConvertTo-Json -Compress
-$dateStr = Get-Date -Format "dd.MM.yyyy"
+$dateStr = Get-Date -Format "dd.MM.yyyy HH:mm"
 $isoDate = Get-Date -Format "yyyy-MM-dd"
 $content = "const METKI_DATA_DATE = `"$dateStr`";`nconst METKI_DATA = $json;"
 # Zapisz UTF-8 BEZ BOM (Out-File dodaje BOM w PS 5.1)
