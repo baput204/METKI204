@@ -712,28 +712,39 @@ document.addEventListener('DOMContentLoaded', () => {
       const dates = (await res.json()).sort().reverse(); // newest first
       if (!dates.length) return;
       const sel = document.getElementById('history-select');
-      const todayISO = new Date().toISOString().slice(0, 10);
+
+      // Determine which ISO date matches data.js
+      let currentISO = null;
+      if (typeof METKI_DATA_DATE !== 'undefined') {
+        const parts = METKI_DATA_DATE.split(' ')[0].split('.');
+        if (parts.length === 3) currentISO = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+
       dates.forEach(d => {
         const [y, m, day] = d.split('-');
         const opt = document.createElement('option');
         opt.value = d;
         opt.textContent = `${day}.${m}.${y}`;
-        if (d === todayISO) opt.textContent += ' ✦';
+        if (d === currentISO) opt.textContent += ' ✦';
         sel.appendChild(opt);
       });
-      // Dodaj opcję "bieżące dane" z data.js na początku
-      const currentDateLabel = typeof METKI_DATA_DATE !== 'undefined' ? METKI_DATA_DATE : todayISO;
-      const currentOpt = document.createElement('option');
-      currentOpt.value = '__current__';
-      currentOpt.textContent = currentDateLabel + ' ✦';
-      sel.insertBefore(currentOpt, sel.firstChild);
-      sel.value = '__current__';
+
+      // If data.js date is not in manifest, add it at the top
+      if (currentISO && !dates.includes(currentISO)) {
+        const opt = document.createElement('option');
+        opt.value = '__current__';
+        opt.textContent = METKI_DATA_DATE.split(' ')[0] + ' ✦';
+        sel.insertBefore(opt, sel.firstChild);
+      }
+
+      // Select the current data entry
+      sel.value = currentISO && dates.includes(currentISO) ? currentISO : '__current__';
 
       sel.style.display = 'inline-block';
       sel.addEventListener('change', async () => {
         const iso = sel.value;
-        if (iso === '__current__' && typeof METKI_DATA !== 'undefined') {
-          loadData(METKI_DATA, typeof METKI_DATA_DATE !== 'undefined' ? METKI_DATA_DATE : todayISO);
+        if ((iso === '__current__' || iso === currentISO) && typeof METKI_DATA !== 'undefined') {
+          loadData(METKI_DATA, typeof METKI_DATA_DATE !== 'undefined' ? METKI_DATA_DATE : '–');
           return;
         }
         document.getElementById('data-date-label').textContent = '⏳ Ładowanie…';
