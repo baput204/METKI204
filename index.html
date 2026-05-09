@@ -721,12 +721,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (d === todayISO) opt.textContent += ' ✦';
         sel.appendChild(opt);
       });
-      sel.style.display = '';
+      // Dodaj opcję "bieżące dane" z data.js na początku
+      const currentDateLabel = typeof METKI_DATA_DATE !== 'undefined' ? METKI_DATA_DATE : todayISO;
+      const currentOpt = document.createElement('option');
+      currentOpt.value = '__current__';
+      currentOpt.textContent = currentDateLabel + ' ✦';
+      sel.insertBefore(currentOpt, sel.firstChild);
+      sel.value = '__current__';
+
+      sel.style.display = 'inline-block';
       sel.addEventListener('change', async () => {
         const iso = sel.value;
-        const todayISO2 = new Date().toISOString().slice(0, 10);
-        if (iso === todayISO2 && typeof METKI_DATA !== 'undefined') {
-          loadData(METKI_DATA, typeof METKI_DATA_DATE !== 'undefined' ? METKI_DATA_DATE : iso);
+        if (iso === '__current__' && typeof METKI_DATA !== 'undefined') {
+          loadData(METKI_DATA, typeof METKI_DATA_DATE !== 'undefined' ? METKI_DATA_DATE : todayISO);
           return;
         }
         document.getElementById('data-date-label').textContent = '⏳ Ładowanie…';
