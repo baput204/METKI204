@@ -45,7 +45,7 @@
       margin-right: auto;
       box-sizing: border-box;
     }
-    /* tylko search-row wycentrowany — hfb-row i status-row muszą być pełnej szerokości do scrollowania */
+    /* tylko search-row wycentrowany */
     #search-row {
       max-width: 620px;
       margin-left: auto;
@@ -167,64 +167,80 @@
       cursor: pointer;
     }
 
-    #hfb-row {
+    /* ── FILTER DROPDOWNS ── */
+    #filter-row2 {
       display: flex;
-      gap: 5px;
-      overflow-x: auto;
-      padding-bottom: 2px;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
+      gap: 6px;
     }
-    #hfb-row::-webkit-scrollbar { display: none; }
 
-    .hfb-chip {
-      flex-shrink: 0;
-      padding: 4px 11px;
+    .filter-dropdown {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .filter-dropdown-btn {
+      width: 100%;
+      padding: 5px 22px 5px 10px;
+      border: 1.5px solid #ddd;
       border-radius: 14px;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23555'/%3E%3C/svg%3E") no-repeat right 8px center;
       font-size: 12px;
       font-weight: 600;
-      border: 1.5px solid #ddd;
-      background: #fff;
       color: var(--text-secondary);
       cursor: pointer;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
-      user-select: none;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .hfb-chip.active {
-      background: var(--ikea-blue);
-      color: #fff;
+    .filter-dropdown-btn.has-selection {
+      background-color: var(--ikea-blue);
       border-color: var(--ikea-blue);
+      color: #fff;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='white'/%3E%3C/svg%3E");
     }
 
-    #status-row {
-      display: flex;
-      gap: 5px;
-      overflow-x: auto;
-      padding-bottom: 2px;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-    }
-    #status-row::-webkit-scrollbar { display: none; }
-
-    .status-chip {
-      flex-shrink: 0;
-      padding: 4px 12px;
-      border-radius: 14px;
-      font-size: 11px;
-      font-weight: 600;
-      border: 1.5px solid #ddd;
+    .filter-dropdown-panel {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      min-width: 160px;
+      max-height: 260px;
+      overflow-y: auto;
       background: #fff;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-      user-select: none;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.13);
+      z-index: 200;
+      padding: 4px 0;
     }
-    .status-chip.active-ok    { background: var(--ok-green);   color: #fff; border-color: var(--ok-green); }
-    .status-chip.active-warn  { background: var(--warn-red);   color: #fff; border-color: var(--warn-red); }
-    .status-chip.active-all   { background: var(--ikea-blue);  color: #fff; border-color: var(--ikea-blue); }
-    .status-chip.active-zmiana{ background: var(--change-orange); color: #fff; border-color: var(--change-orange); }
-    .status-chip.active-checked { background: var(--ok-green); color: #fff; border-color: var(--ok-green); }
-    .status-chip.active-unchecked { background: #555; color: #fff; border-color: #555; }
+    .filter-dropdown-panel.open { display: block; }
+
+    .filter-dropdown-panel label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+      color: var(--text-primary);
+    }
+    .filter-dropdown-panel label:hover { background: #f5f5f5; }
+    .filter-dropdown-panel input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--ikea-blue);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .filter-dropdown-panel .panel-sep {
+      border: none;
+      border-top: 1px solid #eee;
+      margin: 3px 0;
+    }
 
     /* ── SUMMARY BAR ── */
     #summary-bar {
@@ -584,17 +600,21 @@
     </select>
   </div>
 
-  <div id="hfb-row">
-    <div class="hfb-chip active" data-hfb="ALL">Wszystkie</div>
-  </div>
-
-  <div id="status-row">
-    <div class="status-chip active-all" data-status="ALL">Wszystkie</div>
-    <div class="status-chip" data-status="OK">Dostępny</div>
-    <div class="status-chip" data-status="WARN">Niedostępny</div>
-    <div class="status-chip" data-status="CHANGE">Zmiana</div>
-    <div class="status-chip" data-status="UNCHECKED">Niesprawdzone</div>
-    <div class="status-chip" data-status="CHECKED">Sprawdzone</div>
+  <div id="filter-row2">
+    <div class="filter-dropdown">
+      <button class="filter-dropdown-btn" id="hfb-btn" type="button">HFB: Wszystkie ▾</button>
+      <div class="filter-dropdown-panel" id="hfb-panel"></div>
+    </div>
+    <div class="filter-dropdown">
+      <button class="filter-dropdown-btn" id="status-btn" type="button">Status: Wszystkie ▾</button>
+      <div class="filter-dropdown-panel" id="status-panel">
+        <label><input type="checkbox" value="OK"> Dostępny</label>
+        <label><input type="checkbox" value="WARN"> Niedostępny</label>
+        <label><input type="checkbox" value="CHANGE"> Zmiana</label>
+        <hr class="panel-sep">
+        <label><input type="checkbox" value="NOACTION"> Bez akcji (OK)<span id="noaction-count" style="color:#999;font-size:11px;margin-left:2px"></span></label>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -655,43 +675,7 @@ document.addEventListener('DOMContentLoaded', () => {
     render();
   });
 
-  // HFB chips (delegated)
-  document.getElementById('hfb-row').addEventListener('click', e => {
-    const chip = e.target.closest('.hfb-chip');
-    if (!chip) return;
-    const val = chip.dataset.hfb;
-    if (val === 'ALL') {
-      activeHfbSet.clear();
-    } else {
-      if (activeHfbSet.has(val)) activeHfbSet.delete(val);
-      else activeHfbSet.add(val);
-    }
-    document.querySelectorAll('.hfb-chip').forEach(c => c.classList.remove('active'));
-    if (activeHfbSet.size === 0) {
-      document.querySelector('.hfb-chip[data-hfb="ALL"]').classList.add('active');
-    } else {
-      activeHfbSet.forEach(h => {
-        const c = document.querySelector(`.hfb-chip[data-hfb="${h}"]`);
-        if (c) c.classList.add('active');
-      });
-    }
-    render();
-  });
-
-  // Status chips
-  document.getElementById('status-row').addEventListener('click', e => {
-    const chip = e.target.closest('.status-chip');
-    if (!chip) return;
-    const val = chip.dataset.status;
-    if (val === 'ALL') {
-      activeStatusSet.clear();
-    } else {
-      if (activeStatusSet.has(val)) activeStatusSet.delete(val);
-      else activeStatusSet.add(val);
-    }
-    updateStatusChipStyles();
-    render();
-  });
+  initDropdowns();
 
   // Drag & drop
   const overlay = document.getElementById('drag-overlay');
@@ -799,76 +783,144 @@ function pad(val, len) {
 }
 
 function loadData(rows, sourceLabel) {
-  allData = rows.map(r => ({
-    hfb:     String(r['HFB'] || '').trim().padStart(2, '0'),
-    pa:      pad(r['Product Area'] || '', 4),
-    artNo:   pad(r['NR ART.'] || r['Article Number'] || '', 8),
-    name:    r['NAZWA ART.'] || r['Article Name'] || '',
-    sm:      r['SM'] !== undefined ? String(r['SM']) : '',
-    srp:     r['SRP'] !== undefined ? String(r['SRP']) : '',
-    boh:     r['BoH'] !== undefined ? r['BoH'] : (r['Base Onhand'] !== undefined ? r['Base Onhand'] : ''),
-    status:  r['Status'] || '',
-    price1:  r['Price1'] !== undefined ? r['Price1'] : '',
-    zmianaC: !!(r['Zmiana ceny'] && r['Zmiana ceny'] !== false && r['Zmiana ceny'] !== 'False' && r['Zmiana ceny'] !== 'FALSE' && r['Zmiana ceny'] !== 0 && r['Zmiana ceny'] !== '0'),
-    zmianaL: !!(r['Zmiana lokalizacji'] && r['Zmiana lokalizacji'] !== false && r['Zmiana lokalizacji'] !== 'False' && r['Zmiana lokalizacji'] !== 'FALSE' && r['Zmiana lokalizacji'] !== 0 && r['Zmiana lokalizacji'] !== '0'),
-    lok:     r['Lokalizacja'] || '',
-    notatki: r['Notatki'] || '',
-  })).filter(r => r.name.trim() !== '' || r.artNo.replace(/^0+/, '') !== '');
+  allData = rows.map(r => {
+    const zmianaC = !!(r['Zmiana ceny'] && r['Zmiana ceny'] !== false && r['Zmiana ceny'] !== 'False' && r['Zmiana ceny'] !== 'FALSE' && r['Zmiana ceny'] !== 0 && r['Zmiana ceny'] !== '0');
+    const zmianaL = !!(r['Zmiana lokalizacji'] && r['Zmiana lokalizacji'] !== false && r['Zmiana lokalizacji'] !== 'False' && r['Zmiana lokalizacji'] !== 'FALSE' && r['Zmiana lokalizacji'] !== 0 && r['Zmiana lokalizacji'] !== '0');
+    const notatki = r['Notatki'] || '';
+    const notatki_lc = notatki.trim().toLowerCase();
+    return {
+      hfb:     String(r['HFB'] || '').trim().padStart(2, '0'),
+      pa:      pad(r['Product Area'] || '', 4),
+      artNo:   pad(r['NR ART.'] || r['Article Number'] || '', 8),
+      name:    r['NAZWA ART.'] || r['Article Name'] || '',
+      sm:      r['SM'] !== undefined ? String(r['SM']) : '',
+      srp:     r['SRP'] !== undefined ? String(r['SRP']) : '',
+      boh:     r['BoH'] !== undefined ? r['BoH'] : (r['Base Onhand'] !== undefined ? r['Base Onhand'] : ''),
+      status:  r['Status'] || '',
+      price1:  r['Price1'] !== undefined ? r['Price1'] : '',
+      zmianaC,
+      zmianaL,
+      lok:     r['Lokalizacja'] || '',
+      notatki,
+      noAction: !zmianaC && !zmianaL && (notatki_lc === '' || notatki_lc === 'ok' || notatki_lc === 'ok.'),
+    };
+  }).filter(r => r.name.trim() !== '' || r.artNo.replace(/^0+/, '') !== '');
 
   document.getElementById('data-date-label').textContent = sourceLabel;
-  buildHfbChips();
+  buildHfbDropdown();
   render();
 }
 
-// ─── BUILD HFB CHIPS ─────────────────────────────────
-function buildHfbChips() {
+// ─── DROPDOWNS ───────────────────────────────────────
+function buildHfbDropdown() {
   const hfbs = [...new Set(allData.map(r => r.hfb).filter(Boolean))].sort();
-  const row = document.getElementById('hfb-row');
-  row.innerHTML = '';
-  const allChip = document.createElement('div');
-  allChip.className = 'hfb-chip active';
-  allChip.dataset.hfb = 'ALL';
-  allChip.textContent = 'Wszystkie';
-  row.appendChild(allChip);
+  const panel = document.getElementById('hfb-panel');
+  panel.innerHTML = hfbs.map(h =>
+    `<label><input type="checkbox" value="${h}"> HFB ${h}</label>`
+  ).join('');
 
-  hfbs.forEach(h => {
-    const chip = document.createElement('div');
-    chip.className = 'hfb-chip';
-    chip.dataset.hfb = h;
-    chip.textContent = 'HFB ' + h;
-    row.appendChild(chip);
-  });
+  const noActionCount = allData.filter(r => r.noAction).length;
+  const span = document.getElementById('noaction-count');
+  if (span) span.textContent = noActionCount > 0 ? ` · ${noActionCount}` : '';
+
   activeHfbSet = new Set();
+  activeStatusSet = new Set();
+  document.querySelectorAll('#status-panel input[type="checkbox"]').forEach(cb => cb.checked = false);
+  updateHfbDropdownBtn();
+  updateStatusDropdownBtn();
   requestAnimationFrame(fixStickyOffset);
 }
 
-// ─── FILTER + SORT ────────────────────────────────────
-function updateStatusChipStyles() {
-  const clsMap = {ALL:'active-all',OK:'active-ok',WARN:'active-warn',CHANGE:'active-zmiana',CHECKED:'active-checked',UNCHECKED:'active-unchecked'};
-  document.querySelectorAll('.status-chip').forEach(c => {
-    Object.values(clsMap).forEach(cls => c.classList.remove(cls));
-    const v = c.dataset.status;
-    if (v === 'ALL' && activeStatusSet.size === 0) c.classList.add('active-all');
-    else if (activeStatusSet.has(v)) c.classList.add(clsMap[v]);
+function updateHfbDropdownBtn() {
+  const btn = document.getElementById('hfb-btn');
+  if (!btn) return;
+  if (activeHfbSet.size === 0) {
+    btn.textContent = 'HFB: Wszystkie ▾';
+    btn.classList.remove('has-selection');
+  } else if (activeHfbSet.size <= 3) {
+    btn.textContent = 'HFB: ' + [...activeHfbSet].join(', ') + ' ▾';
+    btn.classList.add('has-selection');
+  } else {
+    btn.textContent = `HFB: ${activeHfbSet.size} wybrane ▾`;
+    btn.classList.add('has-selection');
+  }
+}
+
+function updateStatusDropdownBtn() {
+  const btn = document.getElementById('status-btn');
+  if (!btn) return;
+  if (activeStatusSet.size === 0) {
+    btn.textContent = 'Status: Wszystkie ▾';
+    btn.classList.remove('has-selection');
+  } else {
+    const labels = { OK: 'Dostępny', WARN: 'Niedostępny', CHANGE: 'Zmiana', NOACTION: 'Bez akcji' };
+    btn.textContent = [...activeStatusSet].map(v => labels[v] || v).join(', ') + ' ▾';
+    btn.classList.add('has-selection');
+  }
+}
+
+function initDropdowns() {
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.filter-dropdown')) {
+      document.querySelectorAll('.filter-dropdown-panel').forEach(p => p.classList.remove('open'));
+    }
+  });
+
+  document.getElementById('hfb-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('status-panel').classList.remove('open');
+    document.getElementById('hfb-panel').classList.toggle('open');
+  });
+
+  document.getElementById('status-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('hfb-panel').classList.remove('open');
+    document.getElementById('status-panel').classList.toggle('open');
+  });
+
+  document.getElementById('hfb-panel').addEventListener('change', e => {
+    if (e.target.type !== 'checkbox') return;
+    activeHfbSet = new Set([...document.querySelectorAll('#hfb-panel input:checked')].map(cb => cb.value));
+    updateHfbDropdownBtn();
+    render();
+  });
+
+  document.getElementById('status-panel').addEventListener('change', e => {
+    if (e.target.type !== 'checkbox') return;
+    activeStatusSet = new Set([...document.querySelectorAll('#status-panel input:checked')].map(cb => cb.value));
+    updateStatusDropdownBtn();
+    render();
   });
 }
 
+// ─── FILTER + SORT ────────────────────────────────────
+
 function applyFilters() {
   filteredData = allData.filter(r => {
-    // HFB filter (multi-select OR)
+    // HFB filter
     if (activeHfbSet.size > 0 && !activeHfbSet.has(r.hfb)) return false;
 
-    // Status filter (multi-select OR)
-    if (activeStatusSet.size > 0) {
-      const bohNum = Number(r.boh);
-      const isOk = !isNaN(bohNum) ? bohNum > 0 : (String(r.status).toLowerCase().includes('dostepny') && !String(r.status).toLowerCase().includes('nie'));
-      let matches = false;
-      if (activeStatusSet.has('OK')        && isOk) matches = true;
-      if (activeStatusSet.has('WARN')      && !isOk) matches = true;
-      if (activeStatusSet.has('CHANGE')    && (r.zmianaC || r.zmianaL)) matches = true;
-      if (activeStatusSet.has('CHECKED')   && checkedArticles.has(r.artNo)) matches = true;
-      if (activeStatusSet.has('UNCHECKED') && !checkedArticles.has(r.artNo)) matches = true;
-      if (!matches) return false;
+    // noAction articles hidden by default; show only if NOACTION selected
+    if (r.noAction) {
+      if (!activeStatusSet.has('NOACTION')) return false;
+      // noAction passes — still subject to HFB + search filters
+    } else {
+      // Regular articles: apply status filters
+      if (activeStatusSet.size > 0) {
+        const hasRegularFilter = activeStatusSet.has('OK') || activeStatusSet.has('WARN') || activeStatusSet.has('CHANGE');
+        if (hasRegularFilter) {
+          const bohNum = Number(r.boh);
+          const isOk = !isNaN(bohNum) ? bohNum > 0 : (String(r.status).toLowerCase().includes('dostepny') && !String(r.status).toLowerCase().includes('nie'));
+          let matches = false;
+          if (activeStatusSet.has('OK')     && isOk) matches = true;
+          if (activeStatusSet.has('WARN')   && !isOk) matches = true;
+          if (activeStatusSet.has('CHANGE') && (r.zmianaC || r.zmianaL)) matches = true;
+          if (!matches) return false;
+        } else {
+          // Only NOACTION selected → hide all non-noAction articles
+          return false;
+        }
+      }
     }
 
     if (searchQuery) {
@@ -1022,9 +1074,6 @@ function toggleChecked(artNo) {
 
   // update clear-checks button visibility
   document.getElementById('clear-checks-btn').style.display = checkedArticles.size > 0 ? 'inline-block' : 'none';
-
-  // if filtering by checked/unchecked, re-render
-  if (activeStatusSet.has('CHECKED') || activeStatusSet.has('UNCHECKED')) render();
 }
 
 function clearAllChecked() {
