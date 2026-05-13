@@ -941,6 +941,9 @@ function buildCard(r) {
   const isChecked = checkedArticles.has(r.artNo);
 
   const priceNoteHtml = r.zmianaC ? '<div class="card-note" style="background:#E8F5E9;border-left-color:var(--ok-green);">Wydrukuj price tag z nową ceną</div>' : '';
+  const noteHtml = r.notatki && r.notatki.trim() && r.notatki.trim() !== 'OK.' && r.notatki.trim() !== 'OK'
+    ? `<div class="card-note">${esc(r.notatki)}</div>`
+    : '';
 
   const fmtPrice = r.price1 !== '' && r.price1 !== undefined ? String(r.price1).replace('.', ',') : '—';
   const zmCenaText  = r.zmianaC ? `<span style="color:var(--ok-green);font-weight:700">✓ Nowa cena: ${esc(fmtPrice)} zł</span>` : '<span style="color:#ccc">✕ Zmiana ceny</span>';
@@ -983,6 +986,7 @@ function buildCard(r) {
         <span>${zmLokIcon} Zmiana lok.</span>
       </div>
       ${priceNoteHtml}
+      ${noteHtml}
     </div>
       </div>
     </div>
