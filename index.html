@@ -808,6 +808,7 @@ function loadData(rows, sourceLabel) {
     srp:     r['SRP'] !== undefined ? String(r['SRP']) : '',
     boh:     r['BoH'] !== undefined ? r['BoH'] : (r['Base Onhand'] !== undefined ? r['Base Onhand'] : ''),
     status:  r['Status'] || '',
+    price1:  r['Price1'] !== undefined ? r['Price1'] : '',
     zmianaC: r['Zmiana ceny'] === true || r['Zmiana ceny'] === 'True' || r['Zmiana ceny'] === 'TRUE',
     zmianaL: r['Zmiana lokalizacji'] === true || r['Zmiana lokalizacji'] === 'True' || r['Zmiana lokalizacji'] === 'TRUE',
     lok:     r['Lokalizacja'] || '',
@@ -938,11 +939,13 @@ function buildCard(r) {
   const lokClass = r.zmianaL ? 'loc-changed' : '';
   const isChecked = checkedArticles.has(r.artNo);
 
+  const priceNoteHtml = r.zmianaC ? '<div class="card-note" style="background:#E8F5E9;border-left-color:var(--ok-green);">🖨️ Wydrukuj price tag z nową ceną</div>' : '';
   const noteHtml = r.notatki && r.notatki.trim() && r.notatki.trim() !== 'OK.' && r.notatki.trim() !== 'OK'
     ? `<div class="card-note">📋 ${esc(r.notatki)}</div>`
     : '';
 
-  const zmCenaText  = r.zmianaC ? `<span style="color:var(--ok-green);font-weight:700">✓ Nowa cena: ${esc(r.srp) || '—'}</span>` : '<span style="color:#ccc">✕ Zmiana ceny</span>';
+  const fmtPrice = r.price1 !== '' && r.price1 !== undefined ? String(r.price1).replace('.', ',') : '—';
+  const zmCenaText  = r.zmianaC ? `<span style="color:var(--ok-green);font-weight:700">✓ Nowa cena: ${esc(fmtPrice)} zł</span>` : '<span style="color:#ccc">✕ Zmiana ceny</span>';
   const zmLokIcon   = r.zmianaL ? '<span style="color:var(--ok-green);font-size:15px" title="Zmiana lokalizacji">📍</span>' : '<span style="color:#ccc;font-size:15px">✕</span>';
 
   return `
@@ -981,6 +984,7 @@ function buildCard(r) {
         <span>${zmCenaText}</span>
         <span>${zmLokIcon} Zmiana lok.</span>
       </div>
+      ${priceNoteHtml}
       ${noteHtml}
     </div>
       </div>
