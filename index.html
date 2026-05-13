@@ -1072,7 +1072,8 @@ async function fetchArticleImage(artNo) {
   try {
     const res = await fetch(`https://sik.search.blue.cdtapps.com/pl/pl/search-box?q=${artNo}`);
     if (!res.ok) throw new Error();
-    const url = findBestImage(await res.json());
+    const data = await res.json();
+    const url = data?.searchBox?.universal?.[0]?.product?.mainImageUrl || findBestImage(data);
     imageCache.set(artNo, url || null);
     return url || null;
   } catch {
