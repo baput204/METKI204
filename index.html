@@ -809,8 +809,8 @@ function loadData(rows, sourceLabel) {
     boh:     r['BoH'] !== undefined ? r['BoH'] : (r['Base Onhand'] !== undefined ? r['Base Onhand'] : ''),
     status:  r['Status'] || '',
     price1:  r['Price1'] !== undefined ? r['Price1'] : '',
-    zmianaC: r['Zmiana ceny'] === true || r['Zmiana ceny'] === 'True' || r['Zmiana ceny'] === 'TRUE',
-    zmianaL: r['Zmiana lokalizacji'] === true || r['Zmiana lokalizacji'] === 'True' || r['Zmiana lokalizacji'] === 'TRUE',
+    zmianaC: !!(r['Zmiana ceny'] && r['Zmiana ceny'] !== false && r['Zmiana ceny'] !== 'False' && r['Zmiana ceny'] !== 'FALSE' && r['Zmiana ceny'] !== 0 && r['Zmiana ceny'] !== '0'),
+    zmianaL: !!(r['Zmiana lokalizacji'] && r['Zmiana lokalizacji'] !== false && r['Zmiana lokalizacji'] !== 'False' && r['Zmiana lokalizacji'] !== 'FALSE' && r['Zmiana lokalizacji'] !== 0 && r['Zmiana lokalizacji'] !== '0'),
     lok:     r['Lokalizacja'] || '',
     notatki: r['Notatki'] || '',
   })).filter(r => r.name.trim() !== '' || r.artNo.replace(/^0+/, '') !== '');
@@ -860,8 +860,8 @@ function applyFilters() {
 
     // Status filter (multi-select OR)
     if (activeStatusSet.size > 0) {
-      const st = r.status.toLowerCase();
-      const isOk = st.includes('dostepny') && !st.includes('nie');
+      const bohNum = Number(r.boh);
+      const isOk = !isNaN(bohNum) ? bohNum > 0 : (String(r.status).toLowerCase().includes('dostepny') && !String(r.status).toLowerCase().includes('nie'));
       let matches = false;
       if (activeStatusSet.has('OK')        && isOk) matches = true;
       if (activeStatusSet.has('WARN')      && !isOk) matches = true;
@@ -932,7 +932,8 @@ function fmtBoh(val) {
 }
 
 function buildCard(r) {
-  const isOk = r.status.toLowerCase().includes('dostepny') && !r.status.toLowerCase().includes('nie');
+  const bohNum = Number(r.boh);
+  const isOk = !isNaN(bohNum) ? bohNum > 0 : (String(r.status).toLowerCase().includes('dostepny') && !String(r.status).toLowerCase().includes('nie'));
   const statusClass = isOk ? 'status-ok' : 'status-warn';
   const statusLabel = isOk ? 'Dostępny' : 'Niedostępny';
   const hasChange = r.zmianaC || r.zmianaL;
