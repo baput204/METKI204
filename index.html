@@ -590,11 +590,11 @@
 
   <div id="status-row">
     <div class="status-chip active-all" data-status="ALL">Wszystkie</div>
-    <div class="status-chip" data-status="OK">✅ Dostępny</div>
-    <div class="status-chip" data-status="WARN">❌ Niedostępny</div>
-    <div class="status-chip" data-status="CHANGE">🔄 Zmiana</div>
-    <div class="status-chip" data-status="UNCHECKED">📌 Niesprawdzone</div>
-    <div class="status-chip" data-status="CHECKED">✔️ Sprawdzone</div>
+    <div class="status-chip" data-status="OK">Dostępny</div>
+    <div class="status-chip" data-status="WARN">Niedostępny</div>
+    <div class="status-chip" data-status="CHANGE">Zmiana</div>
+    <div class="status-chip" data-status="UNCHECKED">Niesprawdzone</div>
+    <div class="status-chip" data-status="CHECKED">Sprawdzone</div>
   </div>
 </div>
 
@@ -942,7 +942,7 @@ function buildCard(r) {
     ? `<div class="card-note">📋 ${esc(r.notatki)}</div>`
     : '';
 
-  const zmCenaIcon  = r.zmianaC ? '<span style="color:var(--change-orange);font-size:15px" title="Zmiana ceny">💲</span>' : '<span style="color:#ccc;font-size:15px">✕</span>';
+  const zmCenaText  = r.zmianaC ? `<span style="color:var(--ok-green);font-weight:700">✓ Nowa cena: ${esc(r.srp) || '—'}</span>` : '<span style="color:#ccc">✕ Zmiana ceny</span>';
   const zmLokIcon   = r.zmianaL ? '<span style="color:var(--ok-green);font-size:15px" title="Zmiana lokalizacji">📍</span>' : '<span style="color:#ccc;font-size:15px">✕</span>';
 
   return `
@@ -978,7 +978,7 @@ function buildCard(r) {
         </div>
       </div>
       <div style="display:flex;gap:12px;margin-top:7px;align-items:center;font-size:12px;">
-        <span>${zmCenaIcon} Zmiana ceny</span>
+        <span>${zmCenaText}</span>
         <span>${zmLokIcon} Zmiana lok.</span>
       </div>
       ${noteHtml}
