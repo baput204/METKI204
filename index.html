@@ -141,21 +141,24 @@
 
     #search-input {
       flex: 1;
-      font-size: 14px;
-      padding: 7px 10px;
-      border: 1.5px solid #ccc;
-      border-radius: 20px;
+      font-size: 13px;
+      padding: 5px 10px;
+      border: 1.5px solid #ddd;
+      border-radius: 14px;
       outline: none;
-      background: #fafafa;
+      background: #fff;
+      color: var(--text-primary);
+      font-weight: 500;
     }
-    #search-input:focus { border-color: var(--ikea-blue); background: #fff; }
+    #search-input:focus { border-color: var(--ikea-blue); }
 
     #sort-select {
       font-size: 12px;
-      padding: 6px 8px;
-      border: 1.5px solid #ccc;
-      border-radius: 16px;
-      background: #fafafa;
+      padding: 5px 28px 5px 10px;
+      border: 1.5px solid #ddd;
+      border-radius: 14px;
+      background: #fff;
+      color: var(--text-secondary);
       outline: none;
       max-width: 130px;
       -webkit-appearance: none;
@@ -163,8 +166,8 @@
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23555'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: right 8px center;
-      padding-right: 24px;
       cursor: pointer;
+      font-weight: 600;
     }
 
     /* ── FILTER DROPDOWNS ── */
@@ -798,6 +801,7 @@ function loadData(rows, sourceLabel) {
       boh:     r['BoH'] !== undefined ? r['BoH'] : (r['Base Onhand'] !== undefined ? r['Base Onhand'] : ''),
       status:  r['Status'] || '',
       price1:  r['Price1'] !== undefined ? r['Price1'] : '',
+      fprice1: r['FPRICE1'] !== undefined ? r['FPRICE1'] : '',
       zmianaC,
       zmianaL,
       lok:     r['Lokalizacja'] || '',
@@ -996,7 +1000,8 @@ function buildCard(r) {
     ? `<div class="card-note">${esc(r.notatki)}</div>`
     : '';
 
-  const fmtPrice = r.price1 !== '' && r.price1 !== undefined ? String(r.price1).replace('.', ',') : '—';
+  const newPrice = (r.fprice1 && Number(r.fprice1) > 0) ? r.fprice1 : r.price1;
+  const fmtPrice = newPrice !== '' && newPrice !== undefined ? String(newPrice).replace('.', ',') : '—';
   const zmCenaText  = r.zmianaC ? `<span style="color:var(--ok-green);font-weight:700">✓ Nowa cena: ${esc(fmtPrice)} zł</span>` : '<span style="color:#ccc">✕ Zmiana ceny</span>';
   const zmLokIcon   = r.zmianaL ? '<span style="color:var(--ok-green);font-weight:700">✓ Zmiana lok.</span>' : '<span style="color:#ccc">✕ Zmiana lok.</span>';
 
