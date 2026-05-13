@@ -47,9 +47,6 @@
     }
     /* tylko search-row wycentrowany */
     #search-row {
-      max-width: 620px;
-      margin-left: auto;
-      margin-right: auto;
     }
 
     /* ── HEADER ── */
@@ -801,7 +798,7 @@ function loadData(rows, sourceLabel) {
       boh:     r['BoH'] !== undefined ? r['BoH'] : (r['Base Onhand'] !== undefined ? r['Base Onhand'] : ''),
       status:  r['Status'] || '',
       price1:  r['Price1'] !== undefined ? r['Price1'] : '',
-      fprice1: r['FPRICE1'] !== undefined ? r['FPRICE1'] : '',
+      fprice1: (typeof r['Zmiana ceny'] === 'number' && r['Zmiana ceny'] > 0) ? r['Zmiana ceny'] : (r['FPRICE1'] && Number(r['FPRICE1']) > 0 ? r['FPRICE1'] : ''),
       zmianaC,
       zmianaL,
       lok:     r['Lokalizacja'] || '',
