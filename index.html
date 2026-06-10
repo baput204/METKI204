@@ -260,8 +260,13 @@
       inset: 0;
       background: rgba(0,0,0,0.45);
       z-index: 1000;
+      touch-action: none;
+      overscroll-behavior: none;
     }
     #dropdown-backdrop.active { display: block; }
+
+    /* Blokada scrolla strony, gdy otwarte filtry */
+    body.sheet-open { overflow: hidden; touch-action: none; }
 
     .filter-dropdown-panel label {
       display: flex;
@@ -925,6 +930,8 @@ function updateStatusDropdownBtn() {
 function initDropdowns() {
   const backdrop = document.getElementById('dropdown-backdrop');
   backdrop.addEventListener('click', closeDropdownSheets);
+  // Blokada scrolla tla na dotyku (iOS/Android) gdy otwarte filtry
+  backdrop.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
   document.getElementById('hfb-btn').addEventListener('click', e => {
     e.stopPropagation();
@@ -992,14 +999,37 @@ function openDropdownSheet(panelId, title) {
   if (panel.parentElement !== document.body) document.body.appendChild(panel);
   panel.classList.add('open');
   document.getElementById('dropdown-backdrop').classList.add('active');
-  document.body.style.overflow = 'hidden';
+  lockBodyScroll();
+}
+
+// ── Blokada scrolla strony (zachowuje pozycję, działa też na iOS) ──
+let _scrollLockY = 0;
+function lockBodyScroll() {
+  if (document.body.classList.contains('sheet-open')) return;
+  _scrollLockY = window.scrollY || window.pageYOffset || 0;
+  document.body.style.top = `-${_scrollLockY}px`;
+  document.body.style.position = 'fixed';
+  document.body.style.left = '0';
+  document.body.style.right = '0';
+  document.body.style.width = '100%';
+  document.body.classList.add('sheet-open');
+}
+function unlockBodyScroll() {
+  if (!document.body.classList.contains('sheet-open')) return;
+  document.body.classList.remove('sheet-open');
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.left = '';
+  document.body.style.right = '';
+  document.body.style.width = '';
+  window.scrollTo(0, _scrollLockY);
 }
 
 function closeDropdownSheets() {
   document.querySelectorAll('.filter-dropdown-panel.open').forEach(p => p.classList.remove('open'));
   const bd = document.getElementById('dropdown-backdrop');
   if (bd) bd.classList.remove('active');
-  document.body.style.overflow = '';
+  unlockBodyScroll();
 }
 
 // ─── FILTER + SORT ────────────────────────────────────
