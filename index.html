@@ -115,11 +115,11 @@
 
     /* ── FILTERS ── */
     #filters-bar {
-      position: fixed;
+      position: sticky;
       left: 0;
       right: 0;
-      top: 0; /* nadpisywane przez JS po zmierzeniu headera */
-      z-index: 99;
+      top: 0; /* nadpisywane przez JS = wysokość #app-header, pasek przypięty pod headerem */
+      z-index: 98;
       background: #fff;
       border-bottom: 1px solid var(--card-border);
       padding: 8px 10px 6px;
@@ -127,7 +127,6 @@
       flex-direction: column;
       gap: 6px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.06);
-      will-change: transform;
     }
 
     #search-row {
@@ -673,9 +672,6 @@
   </div>
 </div>
 
-<!-- Placeholder rezerwujący miejsce po filters-bar (który jest fixed) -->
-<div id="filters-placeholder"></div>
-
 <!-- Summary -->
 <div id="summary-bar">
   <div>Wyniki: <span id="result-count">0</span></div>
@@ -715,10 +711,7 @@ let checkedArticles = new Set(JSON.parse(localStorage.getItem('metki_checked') |
 // ─── INIT ─────────────────────────────────────────────
 function fixStickyOffset() {
   const hh = document.getElementById('app-header').offsetHeight;
-  const fb = document.getElementById('filters-bar');
-  fb.style.top = hh + 'px';
-  const ph = document.getElementById('filters-placeholder');
-  if (ph) ph.style.height = fb.offsetHeight + 'px';
+  document.getElementById('filters-bar').style.top = hh + 'px';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -807,35 +800,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch { /* manifest brak - stara wersja bez historii */ }
   })();
 
-  // Scroll: follow-scroll filter bar (śledzi prędkość scrolla)
-  const filtersBar = document.getElementById('filters-bar');
-  let _filterOffset = 0; // 0 = widoczny, ujemny = schowany
-  let _lastScrollY = window.scrollY;
-  let _snapTimer = null;
-
-  function snapFilters() {
-    const topOffset = parseFloat(filtersBar.style.top) || 0;
-    const hideAmount = filtersBar.offsetHeight + topOffset;
-    filtersBar.style.transition = 'transform 0.2s ease';
-    _filterOffset = (_filterOffset < -hideAmount / 2) ? -hideAmount : 0;
-    filtersBar.style.transform = `translateY(${_filterOffset}px)`;
-  }
-
+  // Scroll: pokazywanie przycisku "do góry" (pasek filtrów jest przypięty pod #app-header)
   window.addEventListener('scroll', () => {
-    const y = window.scrollY;
-    const delta = y - _lastScrollY;
-    _lastScrollY = y;
-
-    const topOffset = parseFloat(filtersBar.style.top) || 0;
-    const hideAmount = filtersBar.offsetHeight + topOffset;
-    _filterOffset = Math.min(0, Math.max(-hideAmount, _filterOffset - delta));
-    filtersBar.style.transition = 'none';
-    filtersBar.style.transform = `translateY(${_filterOffset}px)`;
-
-    document.getElementById('scroll-top').classList.toggle('visible', y > 300);
-
-    clearTimeout(_snapTimer);
-    _snapTimer = setTimeout(snapFilters, 160);
+    document.getElementById('scroll-top').classList.toggle('visible', window.scrollY > 300);
   }, { passive: true });
 });
 
