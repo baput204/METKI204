@@ -201,45 +201,92 @@
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='white'/%3E%3C/svg%3E");
     }
 
+    /* Rozwijane menu w stylu natywnego pickera (bottom sheet) */
     .filter-dropdown-panel {
       display: none;
-      position: absolute;
-      top: calc(100% + 4px);
+    }
+    .filter-dropdown-panel.open {
+      display: block;
+      position: fixed;
       left: 0;
-      min-width: 160px;
-      max-height: 260px;
+      right: 0;
+      bottom: 0;
+      top: auto;
+      width: 100%;
+      max-width: 620px;
+      margin: 0 auto;
+      max-height: 75vh;
       overflow-y: auto;
       background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.13);
-      z-index: 200;
-      padding: 4px 0;
+      border-radius: 18px 18px 0 0;
+      box-shadow: 0 -6px 28px rgba(0,0,0,0.28);
+      z-index: 1001;
+      padding: 0 0 calc(10px + env(safe-area-inset-bottom));
+      animation: sheet-up 0.22s ease;
     }
-    .filter-dropdown-panel.open { display: block; }
+    @keyframes sheet-up {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+
+    .sheet-header {
+      position: sticky;
+      top: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 12px;
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      z-index: 1;
+    }
+    .sheet-done {
+      background: var(--ikea-blue);
+      color: #fff;
+      border: none;
+      padding: 7px 18px;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .sheet-done:active { background: var(--ikea-blue-dark); }
+
+    #dropdown-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 1000;
+    }
+    #dropdown-backdrop.active { display: block; }
 
     .filter-dropdown-panel label {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 7px 14px;
-      font-size: 12px;
+      gap: 12px;
+      padding: 13px 18px;
+      font-size: 14px;
       cursor: pointer;
       user-select: none;
       color: var(--text-primary);
+      border-bottom: 1px solid #f3f3f3;
     }
-    .filter-dropdown-panel label:hover { background: #f5f5f5; }
+    .filter-dropdown-panel label:active { background: #f0f6fc; }
     .filter-dropdown-panel input[type="checkbox"] {
-      width: 15px;
-      height: 15px;
+      width: 20px;
+      height: 20px;
       accent-color: var(--ikea-blue);
       cursor: pointer;
       flex-shrink: 0;
     }
     .filter-dropdown-panel .panel-sep {
       border: none;
-      border-top: 1px solid #eee;
-      margin: 3px 0;
+      border-top: 6px solid #f0f0f0;
+      margin: 0;
     }
 
     /* ── SUMMARY BAR ── */
@@ -606,11 +653,19 @@
       <div class="filter-dropdown-panel" id="hfb-panel"></div>
     </div>
     <div class="filter-dropdown">
+      <button class="filter-dropdown-btn" id="sm-btn" type="button">SM: Wszystkie ▾</button>
+      <div class="filter-dropdown-panel" id="sm-panel"></div>
+    </div>
+    <div class="filter-dropdown">
       <button class="filter-dropdown-btn" id="status-btn" type="button">Status: Wszystkie ▾</button>
       <div class="filter-dropdown-panel" id="status-panel">
         <label><input type="checkbox" value="OK"> Dostępny</label>
         <label><input type="checkbox" value="WARN"> Niedostępny</label>
-        <label><input type="checkbox" value="CHANGE"> Zmiana</label>
+        <hr class="panel-sep">
+        <label><input type="checkbox" value="NOTE_REMOVE"> Usuń info o niedostępności</label>
+        <label><input type="checkbox" value="NOTE_ADD"> Dodaj info o niedostępności</label>
+        <label><input type="checkbox" value="PRICE"> Zmiana ceny</label>
+        <label><input type="checkbox" value="LOC"> Zmiana lokalizacji</label>
         <hr class="panel-sep">
         <label><input type="checkbox" value="NOACTION"> Bez akcji (OK)<span id="noaction-count" style="color:#999;font-size:11px;margin-left:2px"></span></label>
       </div>
@@ -640,14 +695,22 @@
 <!-- Scroll to top -->
 <button id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
+<!-- Tło dla rozwijanych menu (bottom sheet) -->
+<div id="dropdown-backdrop"></div>
+
 <script>
 // ─── STATE ───────────────────────────────────────────
 let allData = [];
 let filteredData = [];
 let activeHfbSet = new Set();
+let activeSmSet = new Set();
 let activeStatusSet = new Set();
 let searchQuery = '';
 let sortKey = 'hfb-asc';
+
+// Etykiety Sales Method (SM)
+const SM_LABELS = { '0': 'Markethall / Showroom', '1': 'Selfserve', '2': 'Warehouse' };
+function smLabel(v) { return SM_LABELS[v] || ('SM ' + v); }
 let checkedArticles = new Set(JSON.parse(localStorage.getItem('metki_checked') || '[]'));
 // ─── INIT ─────────────────────────────────────────────
 function fixStickyOffset() {
@@ -788,6 +851,8 @@ function loadData(rows, sourceLabel) {
     const zmianaL = !!(r['Zmiana lokalizacji'] && r['Zmiana lokalizacji'] !== false && r['Zmiana lokalizacji'] !== 'False' && r['Zmiana lokalizacji'] !== 'FALSE' && r['Zmiana lokalizacji'] !== 0 && r['Zmiana lokalizacji'] !== '0');
     const notatki = r['Notatki'] || '';
     const notatki_lc = notatki.trim().toLowerCase();
+    const noteRemove = notatki_lc.includes('usun info o niedostep');
+    const noteAdd = notatki_lc.includes('wstaw info') || notatki_lc.includes('chwilowo niedostep');
     return {
       hfb:     String(r['HFB'] || '').trim().padStart(2, '0'),
       pa:      pad(r['Product Area'] || '', 4),
@@ -803,12 +868,15 @@ function loadData(rows, sourceLabel) {
       zmianaL,
       lok:     r['Lokalizacja'] || '',
       notatki,
+      noteRemove,
+      noteAdd,
       noAction: !zmianaC && !zmianaL && (notatki_lc === '' || notatki_lc === 'ok' || notatki_lc === 'ok.'),
     };
   }).filter(r => r.name.trim() !== '' || r.artNo.replace(/^0+/, '') !== '');
 
   document.getElementById('data-date-label').textContent = sourceLabel;
   buildHfbDropdown();
+  buildSmDropdown();
   render();
 }
 
@@ -830,6 +898,33 @@ function buildHfbDropdown() {
   updateHfbDropdownBtn();
   updateStatusDropdownBtn();
   requestAnimationFrame(fixStickyOffset);
+}
+
+function buildSmDropdown() {
+  // Znane SM (0,1,2) najpierw, potem ewentualne inne wartości
+  const present = new Set(allData.map(r => r.sm).filter(v => v !== '' && v != null));
+  const known = ['0', '1', '2'].filter(v => present.has(v));
+  const extra = [...present].filter(v => !['0', '1', '2'].includes(v)).sort();
+  const sms = [...known, ...extra];
+  const panel = document.getElementById('sm-panel');
+  panel.innerHTML = sms.map(v =>
+    `<label><input type="checkbox" value="${v}"> ${smLabel(v)}</label>`
+  ).join('');
+
+  activeSmSet = new Set();
+  updateSmDropdownBtn();
+}
+
+function updateSmDropdownBtn() {
+  const btn = document.getElementById('sm-btn');
+  if (!btn) return;
+  if (activeSmSet.size === 0) {
+    btn.textContent = 'SM: Wszystkie ▾';
+    btn.classList.remove('has-selection');
+  } else {
+    btn.textContent = 'SM: ' + [...activeSmSet].map(smLabel).join(', ') + ' ▾';
+    btn.classList.add('has-selection');
+  }
 }
 
 function updateHfbDropdownBtn() {
@@ -854,35 +949,42 @@ function updateStatusDropdownBtn() {
     btn.textContent = 'Status: Wszystkie ▾';
     btn.classList.remove('has-selection');
   } else {
-    const labels = { OK: 'Dostępny', WARN: 'Niedostępny', CHANGE: 'Zmiana', NOACTION: 'Bez akcji' };
+    const labels = { OK: 'Dostępny', WARN: 'Niedostępny', NOTE_REMOVE: 'Usuń info', NOTE_ADD: 'Dodaj info', PRICE: 'Zmiana ceny', LOC: 'Zmiana lok.', NOACTION: 'Bez akcji' };
     btn.textContent = [...activeStatusSet].map(v => labels[v] || v).join(', ') + ' ▾';
     btn.classList.add('has-selection');
   }
 }
 
 function initDropdowns() {
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.filter-dropdown')) {
-      document.querySelectorAll('.filter-dropdown-panel').forEach(p => p.classList.remove('open'));
-    }
-  });
+  const backdrop = document.getElementById('dropdown-backdrop');
+  backdrop.addEventListener('click', closeDropdownSheets);
 
   document.getElementById('hfb-btn').addEventListener('click', e => {
     e.stopPropagation();
-    document.getElementById('status-panel').classList.remove('open');
-    document.getElementById('hfb-panel').classList.toggle('open');
+    toggleDropdownSheet('hfb-panel', 'HFB');
+  });
+
+  document.getElementById('sm-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    toggleDropdownSheet('sm-panel', 'Sales Method (SM)');
   });
 
   document.getElementById('status-btn').addEventListener('click', e => {
     e.stopPropagation();
-    document.getElementById('hfb-panel').classList.remove('open');
-    document.getElementById('status-panel').classList.toggle('open');
+    toggleDropdownSheet('status-panel', 'Status');
   });
 
   document.getElementById('hfb-panel').addEventListener('change', e => {
     if (e.target.type !== 'checkbox') return;
     activeHfbSet = new Set([...document.querySelectorAll('#hfb-panel input:checked')].map(cb => cb.value));
     updateHfbDropdownBtn();
+    render();
+  });
+
+  document.getElementById('sm-panel').addEventListener('change', e => {
+    if (e.target.type !== 'checkbox') return;
+    activeSmSet = new Set([...document.querySelectorAll('#sm-panel input:checked')].map(cb => cb.value));
+    updateSmDropdownBtn();
     render();
   });
 
@@ -894,6 +996,45 @@ function initDropdowns() {
   });
 }
 
+function toggleDropdownSheet(panelId, title) {
+  const panel = document.getElementById(panelId);
+  if (panel.classList.contains('open')) closeDropdownSheets();
+  else openDropdownSheet(panelId, title);
+}
+
+function openDropdownSheet(panelId, title) {
+  closeDropdownSheets();
+  const panel = document.getElementById(panelId);
+  // Nagłówek z tytułem i przyciskiem "Gotowe"
+  let header = panel.querySelector('.sheet-header');
+  if (!header) {
+    header = document.createElement('div');
+    header.className = 'sheet-header';
+    const span = document.createElement('span');
+    const doneBtn = document.createElement('button');
+    doneBtn.type = 'button';
+    doneBtn.className = 'sheet-done';
+    doneBtn.textContent = 'Gotowe';
+    doneBtn.addEventListener('click', closeDropdownSheets);
+    header.appendChild(span);
+    header.appendChild(doneBtn);
+    panel.insertBefore(header, panel.firstChild);
+  }
+  header.querySelector('span').textContent = title;
+  // Przenieś panel do <body>, by uniknąć transform-context z #filters-bar
+  if (panel.parentElement !== document.body) document.body.appendChild(panel);
+  panel.classList.add('open');
+  document.getElementById('dropdown-backdrop').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDropdownSheets() {
+  document.querySelectorAll('.filter-dropdown-panel.open').forEach(p => p.classList.remove('open'));
+  const bd = document.getElementById('dropdown-backdrop');
+  if (bd) bd.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
 // ─── FILTER + SORT ────────────────────────────────────
 
 function applyFilters() {
@@ -901,27 +1042,29 @@ function applyFilters() {
     // HFB filter
     if (activeHfbSet.size > 0 && !activeHfbSet.has(r.hfb)) return false;
 
-    // noAction articles hidden by default; show only if NOACTION selected
-    if (r.noAction) {
-      if (!activeStatusSet.has('NOACTION')) return false;
-      // noAction passes — still subject to HFB + search filters
-    } else {
-      // Regular articles: apply status filters
-      if (activeStatusSet.size > 0) {
-        const hasRegularFilter = activeStatusSet.has('OK') || activeStatusSet.has('WARN') || activeStatusSet.has('CHANGE');
-        if (hasRegularFilter) {
-          const bohNum = Number(r.boh);
-          const isOk = !isNaN(bohNum) ? bohNum > 0 : (String(r.status).toLowerCase().includes('dostepny') && !String(r.status).toLowerCase().includes('nie'));
-          let matches = false;
-          if (activeStatusSet.has('OK')     && isOk) matches = true;
-          if (activeStatusSet.has('WARN')   && !isOk) matches = true;
-          if (activeStatusSet.has('CHANGE') && (r.zmianaC || r.zmianaL)) matches = true;
-          if (!matches) return false;
-        } else {
-          // Only NOACTION selected → hide all non-noAction articles
-          return false;
-        }
+    // SM filter (Sales Method)
+    if (activeSmSet.size > 0 && !activeSmSet.has(r.sm)) return false;
+
+    // Status / akcja filter
+    if (activeStatusSet.size > 0) {
+      const regularFilters = [...activeStatusSet].filter(s => s !== 'NOACTION');
+      let matches = false;
+      if (r.noAction) {
+        matches = activeStatusSet.has('NOACTION');
+      } else if (regularFilters.length > 0) {
+        const bohNum = Number(r.boh);
+        const isOk = !isNaN(bohNum) ? bohNum > 0 : (String(r.status).toLowerCase().includes('dostepny') && !String(r.status).toLowerCase().includes('nie'));
+        if (activeStatusSet.has('OK')          && isOk)         matches = true;
+        if (activeStatusSet.has('WARN')        && !isOk)        matches = true;
+        if (activeStatusSet.has('PRICE')       && r.zmianaC)    matches = true;
+        if (activeStatusSet.has('LOC')         && r.zmianaL)    matches = true;
+        if (activeStatusSet.has('NOTE_REMOVE') && r.noteRemove) matches = true;
+        if (activeStatusSet.has('NOTE_ADD')    && r.noteAdd)    matches = true;
       }
+      if (!matches) return false;
+    } else if (r.noAction) {
+      // Bez wybranego filtra: artykuły "bez akcji" ukryte domyślnie
+      return false;
     }
 
     if (searchQuery) {
