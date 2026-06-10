@@ -1209,6 +1209,20 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbo
 // ─── ARTICLE IMAGES ──────────────────────────────────
 const imageCache = new Map();
 
+// Podmienia rozmiar obrazka IKEA na ostrzejszy (parametr imwidth).
+// API zwraca małą miniaturę → na ekranach Retina wygląda „poszarpana”.
+function ikeaImg(url, w) {
+  if (!url) return url;
+  try {
+    const u = new URL(url, location.href);
+    u.searchParams.delete('f');
+    u.searchParams.set('imwidth', w);
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 function findBestImage(obj) {
   let best = null;
   (function traverse(o) {
@@ -1252,12 +1266,14 @@ function loadVisibleImages() {
       const div = entry.target;
       obs.unobserve(div);
       const url = await fetchArticleImage(div.dataset.artno);
-      div.innerHTML = url
-        ? `<img src="${url}" alt="" loading="lazy" onerror="this.parentElement.textContent='📦'">`
+      const cardUrl = ikeaImg(url, 400);   // ostry obraz na karcie (72px @ Retina)
+      div.innerHTML = cardUrl
+        ? `<img src="${cardUrl}" alt="" loading="lazy" onerror="this.parentElement.textContent='📦'">`
         : '📦';
       if (url) {
         div.classList.add('has-img');
-        div.onclick = () => openLightbox(url, div.dataset.artno);
+        const bigUrl = ikeaImg(url, 1000); // większa wersja do podglądu
+        div.onclick = () => openLightbox(bigUrl, div.dataset.artno);
       }
     }
   }, { rootMargin: '200px' });
