@@ -18,7 +18,7 @@
   </script>
   <!-- ── koniec Microsoft Clarity ── -->
 
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <!-- SheetJS (XLSX) ładowany leniwie — dopiero przy upuszczeniu pliku (patrz ensureXLSX) -->
   <script src="data.js"></script>
   <style>
     :root {
@@ -1324,8 +1324,36 @@ function loadVisibleImages() {
 }
 
 // ─── READ XLS FILE ────────────────────────────────────
-function readXlsFile(file) {
+// Leniwe ładowanie biblioteki SheetJS — pobierana dopiero, gdy realnie potrzebna
+// (drag & drop pliku), a nie przy każdym wejściu na stronę. Przyspiesza start.
+let _xlsxPromise = null;
+function ensureXLSX() {
+  if (window.XLSX) return Promise.resolve();
+  if (_xlsxPromise) return _xlsxPromise;
+  _xlsxPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js';
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => { _xlsxPromise = null; reject(new Error('Nie udało się pobrać biblioteki SheetJS (CDN).')); };
+    document.head.appendChild(s);
+  });
+  return _xlsxPromise;
+}
+
+async function readXlsFile(file) {
   const label = document.getElementById('data-date-label');
+  label.textContent = '⏳ Ładowanie biblioteki…';
+
+  try {
+    await ensureXLSX();
+  } catch (err) {
+    console.error(err);
+    alert(err.message || 'Błąd ładowania biblioteki do odczytu Excela.');
+    label.textContent = 'Błąd wczytywania';
+    return;
+  }
+
   label.textContent = '⏳ Wczytywanie…';
 
   const reader = new FileReader();
